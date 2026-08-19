@@ -260,6 +260,11 @@
           <div id="dash-upcoming" class="space-y-2 text-sm"></div>
         </div>
 
+        <div id="dash-reset-box" class="hidden bg-red-50 border-2 border-red-200 rounded-lg p-4">
+          <h3 class="font-semibold text-red-700 mb-1">⚠️ 回復出廠（測試用，僅主持律師）</h3>
+          <p class="text-xs text-red-600 mb-3">會清空「全所所有裝置」的案件、客戶、財務、人事、任務等資料（雲端與本機一起歸零），供重新測試。<b>不會刪除利益衝突管制表</b>。此動作無法復原。</p>
+          <button type="button" id="btn-factory-reset" class="text-xs px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700">清空所有資料，回復出廠</button>
+        </div>
 
       </section>
 
@@ -1641,6 +1646,9 @@
   // 沿用已驗證的還原路徑（saveState→reload→重建），風險最低。無 Firestore／未登入時整層靜默跳過，本機行為不變。
   const fbDb = (window.firebase && firebase.firestore) ? firebase.firestore() : null;
   const CLOUD_SYNC_KEYS = PERSIST_KEYS.filter((k) => k !== 'lf_currentUserId'); // 登入角色是每台裝置自己選的，不同步
+  // 2026-08-05：跨裝置「回復出廠」用的版本戳。任何一台觸發重設會把 resetAt 寫進雲端，
+  // 其他台看到 resetAt 比自己記錄的新，就清空本機並重載，達成全所一起歸零。
+  let cloudKnownResetAt = 0; try { cloudKnownResetAt = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
   let cloudAutoOn = false;
   try { cloudAutoOn = localStorage.getItem('lf_cloudAuto') === '1'; } catch (e) { /* ignore */ }
   let cloudLiveOn = false;
@@ -1675,13 +1683,29 @@
     const stamp = new Date().toISOString();
     try {
       await fbDb.collection('firmState').doc('main').set({
-        data, updatedByEmail: googleAuthedEmail, updatedAtLocal: stamp,
+        data, resetAt: cloudKnownResetAt, updatedByEmail: googleAuthedEmail, updatedAtLocal: stamp,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
       try { localStorage.setItem('lf_cloudLastApplied', stamp); } catch (_) { /* ignore */ } // 記住自己這次寫的版本，即時同步才不會把自己的寫入當成別台改動
       if (!silent) { cloudSetStatus('ok', '已備份到雲端 ' + new Date().toLocaleString('zh-TW', { hour12: false })); logAudit('雲端備份', '', googleAuthedEmail || ''); }
       return true;
     } catch (e) { cloudSetStatus('err', '雲端同步失敗：' + esc(String((e && e.code) || (e && e.message) || e)) + '（各台改動可能不會互通）'); return false; }
+  }
+  // 2026-08-05：一鍵回復出廠（測試用，僅主持律師）。清空雲端 firmState/main 與本機全部資料，
+  // 並寫入 resetAt 讓其他裝置一起歸零。不動 conflictRegistry（8,236 筆利益衝突表）與 lf_conflictCache。
+  function factoryReset() {
+    const stamp = Date.now();
+    try { localStorage.setItem('lf_lastResetApplied', String(stamp)); } catch (e) { /* ignore */ }
+    cloudKnownResetAt = stamp;
+    const finishLocal = () => { try { PERSIST_KEYS.forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ } idbClearAll().then(() => location.reload()).catch(() => location.reload()); };
+    if (fbDb && cloudCanUse()) {
+      const emptyData = {};
+      CLOUD_SYNC_KEYS.forEach((k) => { emptyData[k] = (k === 'lf_closedCasesImported' || k === 'lf_aiConsent') ? false : []; });
+      fbDb.collection('firmState').doc('main').set({
+        data: emptyData, resetAt: stamp, updatedByEmail: googleAuthedEmail || '', updatedAtLocal: new Date().toISOString(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }).then(() => { try { localStorage.setItem('lf_cloudLastApplied', new Date().toISOString()); } catch (e) { /* ignore */ } }).finally(finishLocal);
+    } else { finishLocal(); }
   }
   function cloudBackupDebounced() {
     // 2026-07-22 修正：只要已用 @ialaw.tw 登入就自動推送（不再需要任何人手動開「自動備份」）。
@@ -1858,6 +1882,16 @@
     cloudUnsub = fbDb.collection('firmState').doc('main').onSnapshot((snap) => {
       if (!snap.exists || snap.metadata.hasPendingWrites) return; // 不存在或自己剛寫的略過
       const payload = snap.data() || {};
+      // 2026-08-05：偵測到別台觸發「回復出廠」→ 清空本機並重載
+      const rAt = Number(payload.resetAt) || 0;
+      let lastReset = 0; try { lastReset = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
+      if (rAt > lastReset) {
+        try { localStorage.setItem('lf_lastResetApplied', String(rAt)); } catch (e) { /* ignore */ }
+        try { PERSIST_KEYS.forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
+        idbClearAll().then(() => location.reload()).catch(() => location.reload());
+        return;
+      }
+      cloudKnownResetAt = Math.max(cloudKnownResetAt, rAt);
       const stamp = payload.updatedAtLocal || '';
       let last = ''; try { last = localStorage.getItem('lf_cloudLastApplied') || ''; } catch (e) { /* ignore */ }
       if (stamp && stamp !== last) {
@@ -2172,6 +2206,7 @@
   }
 
   function renderDashboard() {
+    { const rb = document.getElementById('dash-reset-box'); const u = currentUser(); if (rb) rb.classList.toggle('hidden', !(u && u.roleGroup === 'boss')); }
     document.getElementById('dash-today').textContent = `${TODAY}（週${['日', '一', '二', '三', '四', '五', '六'][new Date(TODAY + 'T00:00:00').getDay()]}）`;
     renderScopeToggle();
     const scopeAttorney = scopeAttorneyFilter();
@@ -4880,6 +4915,13 @@
     if (fbAuth) { try { fbAuth.signOut(); } catch (e) { /* 忽略 */ } googleAuthedEmail = null; }
     applyRoleVisibility();
   });
+  { const frb = document.getElementById('btn-factory-reset'); if (frb) frb.addEventListener('click', () => {
+    const u = currentUser(); if (!u || u.roleGroup !== 'boss') { alert('僅主持律師可執行回復出廠'); return; }
+    confirmModal({ title: '回復出廠（清空所有資料）', message: '這會把全所所有裝置的案件、客戶、財務、人事、任務等資料全部清空（雲端與本機一起歸零），供重新測試。利益衝突管制表不受影響。此動作無法復原，確定嗎？', confirmText: '確定清空', danger: true }, () => {
+      if (!window.confirm('最後確認：真的要清空全部資料嗎？按「確定」後立即執行且無法復原。')) return;
+      factoryReset();
+    });
+  }); }
 
   // ---- 所屬法院可過濾下拉選單 ----
   function renderCourtsDatalist() {
