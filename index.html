@@ -1649,6 +1649,7 @@
   // 2026-08-05：跨裝置「回復出廠」用的版本戳。任何一台觸發重設會把 resetAt 寫進雲端，
   // 其他台看到 resetAt 比自己記錄的新，就清空本機並重載，達成全所一起歸零。
   let cloudKnownResetAt = 0; try { cloudKnownResetAt = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
+  let cloudResetChecked = false; // 登入後必須先向雲端確認「有沒有被回復出廠」，確認完成前禁止任何上傳（避免舊裝置把舊資料推回去）
   let cloudAutoOn = false;
   try { cloudAutoOn = localStorage.getItem('lf_cloudAuto') === '1'; } catch (e) { /* ignore */ }
   let cloudLiveOn = false;
@@ -1678,6 +1679,7 @@
   }
   async function cloudBackupNow(silent) {
     if (!cloudCanUse()) { if (!silent) cloudSetStatus('err', '尚未用 Google 登入，無法備份到雲端'); return false; }
+    if (!cloudResetChecked) { return false; } // 尚未完成回復出廠檢查，禁止推送（避免舊裝置把舊資料推回雲端）
     const data = cloudGatherData();
     if (JSON.stringify(data).length > 900000) { cloudSetStatus('err', '⚠ 雲端同步失敗：資料量超過 Firestore 單筆上限（附件已排除仍過大），請告知系統維護——此時各台改動不會互通'); return false; }
     const stamp = new Date().toISOString();
@@ -1721,7 +1723,7 @@
   function cloudBackupDebounced() {
     // 2026-07-22 修正：只要已用 @ialaw.tw 登入就自動推送（不再需要任何人手動開「自動備份」）。
     // applyingRemote 時是在套用別台的更新，不要又寫回去。
-    if (applyingRemote || !cloudCanUse()) return;
+    if (applyingRemote || !cloudCanUse() || !cloudResetChecked) return; // 未完成回復出廠檢查前不准推送
     clearTimeout(cloudWriteTimer);
     cloudWriteTimer = setTimeout(() => { cloudBackupNow(true); }, 1200);
   }
@@ -1884,6 +1886,29 @@
       typeof renderHRPage !== 'undefined' && renderHRPage,
       typeof renderLeavePage !== 'undefined' && renderLeavePage,
     ].forEach((fn) => { if (typeof fn === 'function') { try { fn(); } catch (e) { /* ignore */ } } });
+  }
+  // 登入後先向雲端確認一次「是否被回復出廠」。若雲端 resetAt 比本機新 → 立刻清空本機並重載（在任何上傳之前），
+  // 這樣重設當下沒開著、事後才登入的舊裝置，就不會把舊資料推回雲端。確認無誤才允許上傳並掛即時同步。
+  function cloudCheckResetThenStart() {
+    if (!(fbDb && cloudCanUse())) { cloudResetChecked = true; try { cloudStartLiveSync(); } catch (e) { /* ignore */ } return; }
+    fbDb.collection('firmState').doc('main').get().then((snap) => {
+      if (snap && snap.exists) {
+        const p = snap.data() || {};
+        const rAt = Number(p.resetAt) || 0;
+        let lastReset = 0; try { lastReset = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
+        if (rAt > lastReset) {
+          try { clearTimeout(cloudWriteTimer); } catch (e) { /* ignore */ } cloudWriteTimer = null;
+          applyingRemote = true;
+          try { localStorage.setItem('lf_lastResetApplied', String(rAt)); } catch (e) { /* ignore */ }
+          wipeLocalForReset();
+          idbClearAll().then(() => location.reload()).catch(() => location.reload());
+          return; // 不設 cloudResetChecked、不掛同步，直接重載
+        }
+        cloudKnownResetAt = Math.max(cloudKnownResetAt, rAt);
+      }
+      cloudResetChecked = true;
+      try { cloudStartLiveSync(); } catch (e) { /* ignore */ }
+    }).catch(() => { cloudResetChecked = true; try { cloudStartLiveSync(); } catch (e) { /* ignore */ } });
   }
   function cloudStartLiveSync() {
     // 2026-07-22 修正：只要已登入就自動即時同步（不再需要手動開「即時同步」）。
@@ -4885,7 +4910,7 @@
         googleAuthedEmail = user.email;
         statusEl.innerHTML = `✅ 已用 <b>${esc(user.email)}</b> 登入，請在下方選擇身分後按「進入系統」。`;
         gBtn.classList.add('hidden');
-        try { cloudStartLiveSync(); } catch (e) { /* 雲端層未就緒不影響登入 */ } // 已登入 + 即時同步開啟時自動掛監聽
+        try { cloudCheckResetThenStart(); } catch (e) { /* 雲端層未就緒不影響登入 */ } // 先確認是否被回復出廠，再掛即時同步
         try { loadConflictRegistry(); } catch (e) { /* ignore */ } // 2026-08-04：登入後從雲端載入利益衝突管制表
       } else {
         googleAuthedEmail = null;
