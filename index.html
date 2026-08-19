@@ -1693,18 +1693,29 @@
   }
   // 2026-08-05：一鍵回復出廠（測試用，僅主持律師）。清空雲端 firmState/main 與本機全部資料，
   // 並寫入 resetAt 讓其他裝置一起歸零。不動 conflictRegistry（8,236 筆利益衝突表）與 lf_conflictCache。
+  // 清掉本機所有 lf_ 資料鍵（保留重設戳與利益衝突快取）
+  function wipeLocalForReset() {
+    try { const keep = { lf_lastResetApplied: 1, lf_conflictCache: 1 }; const rm = [];
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf('lf_') === 0 && !keep[k]) rm.push(k); }
+      rm.forEach((k) => localStorage.removeItem(k));
+    } catch (e) { /* ignore */ }
+  }
   function factoryReset() {
     const stamp = Date.now();
+    // ① 先擋住所有會把舊資料推回雲端／拉回本機的機制（這是「清空後又跑回來」的元凶）
+    try { clearTimeout(cloudWriteTimer); } catch (e) { /* ignore */ } cloudWriteTimer = null;
+    applyingRemote = true;              // 之後不再自動推送
+    try { cloudStopLiveSync(); } catch (e) { /* ignore */ } // 停掉即時同步，避免又拉回舊資料
     try { localStorage.setItem('lf_lastResetApplied', String(stamp)); } catch (e) { /* ignore */ }
     cloudKnownResetAt = stamp;
-    const finishLocal = () => { try { PERSIST_KEYS.forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ } idbClearAll().then(() => location.reload()).catch(() => location.reload()); };
+    const finishLocal = () => { wipeLocalForReset(); idbClearAll().then(() => location.reload()).catch(() => location.reload()); };
     if (fbDb && cloudCanUse()) {
       const emptyData = {};
       CLOUD_SYNC_KEYS.forEach((k) => { emptyData[k] = (k === 'lf_closedCasesImported' || k === 'lf_aiConsent') ? false : []; });
       fbDb.collection('firmState').doc('main').set({
         data: emptyData, resetAt: stamp, updatedByEmail: googleAuthedEmail || '', updatedAtLocal: new Date().toISOString(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }).then(() => { try { localStorage.setItem('lf_cloudLastApplied', new Date().toISOString()); } catch (e) { /* ignore */ } }).finally(finishLocal);
+      }).catch(() => {}).finally(finishLocal);
     } else { finishLocal(); }
   }
   function cloudBackupDebounced() {
@@ -1886,8 +1897,10 @@
       const rAt = Number(payload.resetAt) || 0;
       let lastReset = 0; try { lastReset = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
       if (rAt > lastReset) {
+        try { clearTimeout(cloudWriteTimer); } catch (e) { /* ignore */ } cloudWriteTimer = null;
+        applyingRemote = true; // 別台觸發重設：先擋住本機把舊資料推回去，再清空重載
         try { localStorage.setItem('lf_lastResetApplied', String(rAt)); } catch (e) { /* ignore */ }
-        try { PERSIST_KEYS.forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
+        wipeLocalForReset();
         idbClearAll().then(() => location.reload()).catch(() => location.reload());
         return;
       }
