@@ -222,21 +222,7 @@
         </div>
 
 
-        <!-- 2026-07-14 三次會議：「⚡ 今日待辦與時效提醒」自案件與時效頁移至首頁最上方，並依登入角色/上方切換器自動過濾優先顯示自己承辦的緊急期限 -->
-        <div class="bg-white rounded-lg border-2 border-rose-300 p-5">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-semibold text-slate-800">⚡ 今日待辦與時效提醒</h3>
-            <span class="text-xs text-slate-400">期日 ≤ 3 天內（含已逾期）</span>
-          </div>
-          <div id="urgent-todo-list" class="space-y-2 text-sm"></div>
-        </div>
-
-        <div class="bg-white rounded-lg border-2 border-red-300 p-5">
-          <h3 class="font-semibold text-red-800 mb-1 flex items-center gap-2">🚨 裁判費補繳期限提醒（負部分，限期補正）</h3>
-          <p class="text-xs text-slate-400 mb-3">依「案件與時效」末日提醒中事由含「裁判費」的項目自動彙整，逾期未補正將影響訴訟權利，請優先處理</p>
-          <div id="dash-court-fee-reminders" class="space-y-2 text-sm"></div>
-        </div>
-
+        <!-- 2026-08-19 會議 1b：利益衝突快查移到首頁總覽最上方 -->
         <div class="bg-white rounded-lg border-2 border-navy-800 p-5">
           <h3 class="font-semibold text-slate-800 mb-1 flex items-center gap-2">⚖️ 利益衝突 (Conflict Check) 快速查詢</h3>
           <p class="text-xs text-slate-400 mb-3">輸入姓名（至少 2 字）即時比對：① 全所聯合管制表 8,236 筆歷史紀錄（2026-07 匯入快照）② 本系統客戶／現有案件當事人與對造／已結案紀錄。管制表最新異動請以下方線上版為準</p>
@@ -251,6 +237,21 @@
           </div>
           <p class="text-[11px] text-slate-400 mt-1.5">連結為全所線上管制表（需具存取權限的 Google 帳號才能開啟）；本站內建的 8,236 筆為 2026-07 匯入快照，之後的新增異動請以線上版為準</p>
           <div id="conflict-check-results" class="hidden mt-3 text-sm space-y-2"></div>
+        </div>
+
+        <!-- 2026-07-14 三次會議：「⚡ 今日待辦與時效提醒」自案件與時效頁移至首頁最上方，並依登入角色/上方切換器自動過濾優先顯示自己承辦的緊急期限 -->
+        <div class="bg-white rounded-lg border-2 border-rose-300 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-slate-800">⚡ 今日待辦與時效提醒</h3>
+            <span class="text-xs text-slate-400">期日 ≤ 3 天內（含已逾期）</span>
+          </div>
+          <div id="urgent-todo-list" class="space-y-2 text-sm"></div>
+        </div>
+
+        <div class="bg-white rounded-lg border-2 border-red-300 p-5">
+          <h3 class="font-semibold text-red-800 mb-1 flex items-center gap-2">🚨 裁判費補繳期限提醒（負部分，限期補正）</h3>
+          <p class="text-xs text-slate-400 mb-3">依「案件與時效」末日提醒中事由含「裁判費」的項目自動彙整，逾期未補正將影響訴訟權利，請優先處理</p>
+          <div id="dash-court-fee-reminders" class="space-y-2 text-sm"></div>
         </div>
 
         <div id="dash-cards" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4"></div>
@@ -1133,6 +1134,12 @@
         <button type="button" id="cdm-close" class="text-slate-400 hover:text-slate-600 text-xl leading-none flex-shrink-0" aria-label="關閉">✕</button>
       </div>
       <div id="cdm-body" class="space-y-4 text-sm"></div>
+      <!-- 2026-08-19 會議 2b：案件詳情儲存鍵（各欄雖已即時存檔，仍提供明確「儲存」讓使用者放心，並確保未失焦的輸入也會寫入） -->
+      <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+        <span id="cdm-save-status" class="text-xs text-emerald-600"></span>
+        <button type="button" id="cdm-save" class="text-sm px-5 py-2 rounded bg-navy-900 text-white hover:bg-navy-800">💾 儲存</button>
+        <button type="button" id="cdm-close-2" class="text-sm px-4 py-2 rounded border border-slate-300 text-slate-600 hover:bg-slate-50">關閉</button>
+      </div>
     </div>
   </div>
 
@@ -1400,7 +1407,9 @@
   function isClosedStatus(status) { return status === '已結案'; }
 
   // 2026-07-10 會議新增：案件紀錄表欄位——委任狀態、費用收付狀態
-  const CONTRACT_STATUSES = ['未簽委任狀', '已簽未歸檔', '已簽已歸檔'];
+  // 2026-08-19 會議 2a：委任狀態改為「已簽未遞 / 已簽已遞」（原為「已簽未歸檔 / 已簽已歸檔」）
+  const CONTRACT_STATUSES = ['未簽委任狀', '已簽未遞', '已簽已遞'];
+  const CONTRACT_STATUS_MIGRATE = { '已簽未歸檔': '已簽未遞', '已簽已歸檔': '已簽已遞' };
   const FEE_STATUSES = ['未收款', '已收部分款', '已收足全部款', '義務案件（免收費）'];
 
   // 2026-07-14 二次會議新增：案件類型（用於自動流水號的「字別」）
@@ -1572,7 +1581,7 @@
   // 瀏覽器不支援 IndexedDB（或 jsdom 測試環境）時自動整層退回 localStorage，行為與 v1 完全相同。
   const IDB_NAME = 'lawfirm_preview_db';
   const IDB_STORE = 'kv';
-  const PERSIST_KEYS = ['lf_cases', 'lf_hearings', 'lf_deadlines', 'lf_closedCases', 'lf_closedCasesImported', 'lf_files', 'lf_clients', 'lf_billing', 'lf_taxCases', 'lf_retainerContracts', 'lf_caseHours', 'lf_tasks', 'lf_pettyCash', 'lf_currentUserId', 'lf_aiConsent', 'lf_auditLog', 'lf_todoDone', 'lf_employees', 'lf_leaveRequests', 'lf_trash'];
+  const PERSIST_KEYS = ['lf_cases', 'lf_hearings', 'lf_deadlines', 'lf_closedCases', 'lf_closedCasesImported', 'lf_files', 'lf_clients', 'lf_billing', 'lf_taxCases', 'lf_retainerContracts', 'lf_caseHours', 'lf_tasks', 'lf_pettyCash', 'lf_currentUserId', 'lf_aiConsent', 'lf_auditLog', 'lf_todoDone', 'lf_todoDoneAt', 'lf_todoHidden', 'lf_employees', 'lf_leaveRequests', 'lf_trash'];
   function idbOpenDB() {
     return new Promise((resolve) => {
       try {
@@ -1820,6 +1829,8 @@
       if ('lf_leaveRequests' in data) { leaveRequests = cloudMergeById(leaveRequests, data.lf_leaveRequests, null, lw); _setLocalOnly('lf_leaveRequests', leaveRequests); }
       if ('lf_auditLog' in data) { auditLog = cloudMergeAudit(auditLog, data.lf_auditLog); _setLocalOnly('lf_auditLog', auditLog); }
       if ('lf_todoDone' in data) { completedTodoIds = new Set(data.lf_todoDone || []); _setLocalOnly('lf_todoDone', data.lf_todoDone || []); }
+      if ('lf_todoDoneAt' in data) { completedTodoAt = data.lf_todoDoneAt || {}; _setLocalOnly('lf_todoDoneAt', completedTodoAt); }
+      if ('lf_todoHidden' in data) { hiddenTodoIds = new Set(data.lf_todoHidden || []); _setLocalOnly('lf_todoHidden', data.lf_todoHidden || []); }
       if ('lf_aiConsent' in data) { _setLocalOnly('lf_aiConsent', data.lf_aiConsent); }
       if ('lf_trash' in data) { trash = cloudMergeById(trash, data.lf_trash, null, lw); _setLocalOnly('lf_trash', trash); }
       applyTrashFilter(); // 把別台已刪除的資料濾掉（含本機還留著、又被合併回來的）
@@ -1968,7 +1979,11 @@
   let auditLog = loadState('lf_auditLog', []);
   // 2026-07-22 會議：首頁「今日待辦與時效提醒」的「已完成」勾選狀態（記住被勾掉的待辦 id，避免已處理/已過期事項無限堆積）
   let completedTodoIds = new Set(loadState('lf_todoDone', []));
+  // 2026-08-19 會議 1a：記錄每筆「完成的日期」以便分月打包＋逾一個月自動清除；被清除者移入 hiddenTodoIds 不再顯示（也不會又跳回未完成）
+  let completedTodoAt = loadState('lf_todoDoneAt', {}); // { todoId: 'YYYY-MM-DD' }
+  let hiddenTodoIds = new Set(loadState('lf_todoHidden', []));
   let showCompletedUrgent = false; // 預設隱藏已完成；可在面板底部切換顯示以便反悔取消勾選
+  let openDoneMonths = {}; // 已完成分月區塊的展開狀態（僅 session）
   function logAudit(action, target, detail) {
     auditLog.push({ ts: Date.now(), user: (currentUser() && currentUser().name) || '未登入', action, target: String(target || ''), detail: String(detail || '') });
     if (auditLog.length > 1000) auditLog = auditLog.slice(-1000);
@@ -1985,6 +2000,7 @@
     // 2026-07-15 補回：股別（舊版「新增接案」原有欄位，這裡回補預設值供舊資料相容）
     division: '',
     ...c, status: migrateCaseStage(c.status),
+    contractStatus: CONTRACT_STATUS_MIGRATE[c.contractStatus] || c.contractStatus || CONTRACT_STATUSES[0], // 2026-08-19 2a：舊值自動改名
   }));
   // 舊資料可能是單一 attorney 字串，遷移成 attorneys 陣列（承辦律師改複選）
   let hearings = loadState('lf_hearings', SEED_HEARINGS).map((h) => ({
@@ -2135,6 +2151,8 @@
     saveState('lf_auditLog', auditLog);
     saveState('lf_aiConsent', loadState('lf_aiConsent', false));
     saveState('lf_todoDone', [...completedTodoIds]);
+    saveState('lf_todoDoneAt', completedTodoAt);
+    saveState('lf_todoHidden', [...hiddenTodoIds]);
     saveState('lf_trash', trash);
   }
 
@@ -2534,7 +2552,9 @@
 
   function renderTodoBoard() {
     const items = buildTodoItems();
-    document.getElementById('todo-board-body').innerHTML = items.map((i) => {
+    // 2026-08-19 會議 2d：「代辦與進度總表」只放開庭與期限/提醒，代辦任務改由「待辦任務指派」頁專門管理，兩者不再混雜。
+    const boardItems = items.filter((i) => i.kind !== 'task');
+    document.getElementById('todo-board-body').innerHTML = boardItems.map((i) => {
       const remain = daysUntil(i.date);
       const urgent = remain !== null && remain <= 3;
       return `
@@ -2600,36 +2620,107 @@
     if (!listEl) return;
     const scopeAttorney = scopeAttorneyFilter();
     const allItems = items || buildTodoItems();
-    const scopedItems = scopeAttorney ? allItems.filter((i) => attorneyMatchesScope(i.attorney, scopeAttorney)) : allItems;
-    const urgentItems = scopedItems.filter((i) => { const r = daysUntil(i.date); return r !== null && r <= 3; });
-    const pending = urgentItems.filter((i) => !completedTodoIds.has(i.id));
-    const done = urgentItems.filter((i) => completedTodoIds.has(i.id));
+    // 2026-08-19 會議 2e：「只看我的」時，任務只要我是「指派人或被指派人」都要顯示（被指派人才看得到指派給自己的任務）。
+    // 任務的指派人/被指派人是「姓名」（如王雅楨），承辦律師則是「全名」（如王雅楨律師），故兩者都比對。
+    const _u = currentUser();
+    const myNames = _u ? [_u.name, _u.attorneyFullName].filter(Boolean) : [];
+    const scopedItems = scopeAttorney ? allItems.filter((i) => {
+      if (i.kind === 'task') return myNames.includes(i.attorney) || myNames.includes(i.person);
+      return attorneyMatchesScope(i.attorney, scopeAttorney);
+    }) : allItems;
+    // 1a：逾一個月的已完成自動清除（移入 hiddenTodoIds，不再顯示、也不會又跳回未完成）；並把「案件與時效」板進度=100 的開庭/期限同步標記完成（board→首頁聯動 1d）
+    purgeAndSyncTodoDone(allItems);
+    const urgentItems = scopedItems.filter((i) => { const r = daysUntil(i.date); return r !== null && r <= 3; })
+      .filter((i) => !hiddenTodoIds.has(i.id));
+    const isDoneItem = (i) => completedTodoIds.has(i.id) || (i.kind !== 'task' && Number(i.progress) === 100);
+    const pending = urgentItems.filter((i) => !isDoneItem(i));
+    const done = urgentItems.filter((i) => isDoneItem(i));
+    // 1c：只有「指派人／被指派人」（任務）或承辦律師本人（開庭/期限）或主持律師可勾選
+    const canCheckItem = (i) => {
+      if (_u && _u.roleGroup === 'boss') return true;
+      if (i.kind === 'task') return myNames.includes(i.attorney) || myNames.includes(i.person);
+      return myNames.some((n) => attorneyMatchesScope(i.attorney, n));
+    };
     const rowHTML = (i, isDone) => {
       const remain = daysUntil(i.date);
       const remainLabel = remain < 0 ? `已逾期 ${-remain} 天` : remain === 0 ? '今天到期' : `剩 ${remain} 天`;
+      const allow = canCheckItem(i);
       return `<div class="flex items-center justify-between border ${isDone ? 'border-slate-200 bg-slate-50 opacity-60' : 'border-red-100 bg-red-50'} rounded px-3 py-2">
-        <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
-          <input type="checkbox" class="urgent-todo-check flex-shrink-0" data-todo-id="${esc(i.id)}" ${isDone ? 'checked' : ''} />
+        <label class="flex items-center gap-2 ${allow ? 'cursor-pointer' : 'cursor-not-allowed'} flex-1 min-w-0">
+          <input type="checkbox" class="urgent-todo-check flex-shrink-0" data-todo-id="${esc(i.id)}" ${isDone ? 'checked' : ''} ${allow ? '' : 'disabled title="僅指派人／被指派人或承辦律師可勾選"'} />
           <span class="truncate ${isDone ? 'line-through text-slate-400' : ''}"><span class="${isDone ? 'text-slate-400' : 'text-red-700 font-bold'}">${esc(remainLabel)}</span> · ${esc(isoToROC(i.date))} · ${esc(i.itemLabel)}（${esc(i.person)}${i.caseNumberDisplay ? ' · ' + esc(i.caseNumberDisplay) : ''}）</span>
         </label>
         <span class="text-xs text-slate-400 flex-shrink-0 ml-2">${esc(i.attorney) || '—'}</span>
       </div>`;
     };
     const emptyMsg = `<div class="text-slate-400">目前沒有 3 天內未完成的事項 🎉${scopeAttorney ? '（僅顯示 ' + esc(scopeAttorney) + ' 承辦案件，可切換上方「全所共享日程」查看全部）' : ''}</div>`;
+    // 1a：已完成依「完成月份」分組打包，可逐月展開/收合
+    const monthGroups = {};
+    done.forEach((i) => { const mk = String(completedTodoAt[i.id] || i.date || TODAY).slice(0, 7); (monthGroups[mk] = monthGroups[mk] || []).push(i); });
+    const months = Object.keys(monthGroups).sort().reverse();
+    const doneHTML = months.map((mk) => {
+      const opened = !!openDoneMonths[mk];
+      const rows = opened ? monthGroups[mk].map((i) => rowHTML(i, true)).join('') : '';
+      return `<div class="border border-slate-200 rounded">
+        <button type="button" class="done-month-toggle w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50" data-month="${esc(mk)}">
+          <span>${opened ? '▾' : '▸'} ${esc(mk)} 已完成（${monthGroups[mk].length} 筆）</span>
+        </button>${rows}</div>`;
+    }).join('');
     listEl.innerHTML =
       (pending.length ? pending.map((i) => rowHTML(i, false)).join('') : emptyMsg)
-      + (showCompletedUrgent ? done.map((i) => rowHTML(i, true)).join('') : '')
-      + (done.length ? `<div class="text-[11px] text-slate-400 pt-1"><button type="button" id="toggle-completed-urgent" class="underline">${showCompletedUrgent ? '隱藏' : '顯示'}已完成（${done.length} 筆）</button></div>` : '');
+      + (showCompletedUrgent ? doneHTML : '')
+      + (done.length ? `<div class="text-[11px] text-slate-400 pt-1"><button type="button" id="toggle-completed-urgent" class="underline">${showCompletedUrgent ? '隱藏' : '顯示'}已完成分月打包（${done.length} 筆）</button><span class="ml-2 text-slate-300">完成滿一個月會自動清除</span></div>` : '');
     listEl.querySelectorAll('.urgent-todo-check').forEach((chk) => {
       chk.addEventListener('change', (e) => {
         const id = e.target.dataset.todoId;
-        if (e.target.checked) completedTodoIds.add(id); else completedTodoIds.delete(id);
-        persistAll();
-        renderUrgentTodo();
+        const i = urgentItems.find((x) => x.id === id) || allItems.find((x) => x.id === id);
+        if (!i) return;
+        const wantChecked = e.target.checked;
+        if (!canCheckItem(i)) { e.target.checked = !wantChecked; alert('只有指派人／被指派人（或承辦律師、主持律師）可以勾選完成'); return; }
+        e.target.checked = !wantChecked; // 先復原，等二次確認
+        confirmModal({
+          title: wantChecked ? '標記為已完成' : '取消已完成',
+          message: wantChecked ? `確定將「${i.itemLabel}」標記為已完成嗎？` : '確定取消此項目的已完成標記嗎？',
+          confirmText: '確定', danger: false,
+        }, () => { applyUrgentTodoCheck(i, wantChecked); });
       });
     });
+    listEl.querySelectorAll('.done-month-toggle').forEach((b) => b.addEventListener('click', () => {
+      const mk = b.dataset.month; openDoneMonths[mk] = !openDoneMonths[mk]; renderUrgentTodo();
+    }));
     const toggleBtn = document.getElementById('toggle-completed-urgent');
     if (toggleBtn) toggleBtn.addEventListener('click', () => { showCompletedUrgent = !showCompletedUrgent; renderUrgentTodo(); });
+  }
+  // 1a：逾月自動清除 ＋ board 進度=100 同步標記完成
+  function purgeAndSyncTodoDone(items) {
+    let changed = false;
+    const cutoff = new Date(TODAY + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - 30);
+    Object.keys(completedTodoAt).forEach((id) => {
+      const d = new Date(String(completedTodoAt[id]) + 'T00:00:00');
+      if (!isNaN(d.getTime()) && d < cutoff) { completedTodoIds.delete(id); delete completedTodoAt[id]; hiddenTodoIds.add(id); changed = true; }
+    });
+    (items || []).forEach((i) => {
+      if (i.kind !== 'task' && Number(i.progress) === 100 && !completedTodoIds.has(i.id) && !hiddenTodoIds.has(i.id)) {
+        completedTodoIds.add(i.id); completedTodoAt[i.id] = TODAY; changed = true;
+      }
+    });
+    if (changed) persistAll();
+  }
+  // 1c/1d：套用勾選——記錄完成日期，並聯動任務狀態（已完成）與案件時效進度條（100%）
+  function applyUrgentTodoCheck(i, checked) {
+    if (checked) {
+      completedTodoIds.add(i.id); completedTodoAt[i.id] = TODAY;
+      if (i.kind === 'task' && i.ref) { i.ref.status = '已完成'; touch(i.ref); logAudit('完成任務', i.ref.caseNumber || '', i.ref.title || ''); }
+      else if (i.ref) { i.ref.progress = 100; touch(i.ref); }
+    } else {
+      completedTodoIds.delete(i.id); delete completedTodoAt[i.id]; hiddenTodoIds.delete(i.id);
+      if (i.kind === 'task' && i.ref) { if (taskIsClosed(i.ref)) { i.ref.status = '進行中'; touch(i.ref); } }
+      else if (i.ref && Number(i.ref.progress) === 100) { i.ref.progress = 75; touch(i.ref); }
+    }
+    persistAll();
+    renderDashboard();
+    try { renderTodoBoard(); } catch (e) { /* ignore */ }
+    try { renderTasksPage(); } catch (e) { /* ignore */ }
   }
 
   // ---- 2026-07-13 會議新增：加入 Google 日曆（因為是純前端靜態網站，沒有後端可做真正的
@@ -4546,13 +4637,17 @@
     if (overdue.length) { banner.textContent = `⏰ 有 ${overdue.length} 項任務已逾期，請儘速處理`; banner.classList.remove('hidden'); }
     else banner.classList.add('hidden');
     const body = document.getElementById('tasks-table-body');
+    // 2026-08-19 會議 2e：標示「指派給我」，讓被指派人一眼看到指派給自己的任務
+    const _me = currentUser();
+    const myNamesT = _me ? [_me.name, _me.attorneyFullName].filter(Boolean) : [];
     const rowHtml = (t) => {
       const late = !taskIsClosed(t) && daysUntil(t.dueDate) < 0;
+      const mine = myNamesT.includes(t.assignee);
       const content = t.content || '';
       const short = content.length > 50 ? esc(content.slice(0, 50)) + '…' : esc(content);
-      return `<tr class="hover:bg-slate-50 ${late ? 'bg-rose-50/50' : ''} ${taskIsClosed(t) ? 'opacity-60' : ''}">
+      return `<tr class="hover:bg-slate-50 ${mine ? 'bg-indigo-50/60' : late ? 'bg-rose-50/50' : ''} ${taskIsClosed(t) ? 'opacity-60' : ''}">
         <td class="px-5 py-2"><select data-task-id="${esc(t.id)}" class="task-status-select text-xs border rounded px-1.5 py-1">${TASK_STATUSES.map((s) => `<option value="${esc(s)}" ${t.status === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></td>
-        <td class="px-5 py-2 ${late ? 'text-rose-700 font-medium' : ''}">${esc(t.title)}</td>
+        <td class="px-5 py-2 ${late ? 'text-rose-700 font-medium' : ''}">${mine ? '<span class="text-[10px] bg-indigo-600 text-white rounded px-1 py-0.5 mr-1 align-middle">指派給我</span>' : ''}${esc(t.title)}</td>
         <td class="px-5 py-2 text-xs">${esc(t.assigner || '—')} <span class="text-slate-400">→</span> ${esc(t.assignee || '—')}</td>
         <td class="px-5 py-2 font-mono text-xs">${esc(t.caseNumber || '—')}</td>
         <td class="px-5 py-2 ${late ? 'text-rose-700 font-medium' : ''} whitespace-nowrap">${taskDueDisplay(t)}${late ? '（逾期）' : ''}</td>
@@ -4565,10 +4660,15 @@
     body.innerHTML = (openTasks.length ? openTasks.map(rowHtml).join('') : '<tr><td class="px-5 py-3 text-slate-400" colspan="7">目前沒有進行中的任務</td></tr>')
       + (doneTasks.length ? `<tr class="bg-slate-100/70"><td colspan="7" class="px-5 py-1.5 text-[11px] font-semibold text-slate-400">─── 已完成／已取消（${doneTasks.length}）───</td></tr>` + doneTasks.map(rowHtml).join('') : '');
     body.querySelectorAll('.task-status-select').forEach((sel) => {
-      sel.addEventListener('change', (e) => {
+      // 2026-08-19 會議 2c：修「狀態選了無法更改」。改用 input+change 立即寫入並 touch（newest-wins，避免即時同步用舊值蓋回），
+      // 重繪延到下一個 tick，避免在 change 事件進行中就把 <select> 整個重建、導致選取被吃掉。
+      const commit = (e) => {
         const t = tasks.find((x) => x.id === e.target.dataset.taskId);
-        if (t) { t.status = e.target.value; touch(t); logAudit('修改任務狀態', t.caseNumber || '', `${t.title} → ${t.status}`); persistAll(); renderTasksPage(); renderDashboard(); }
-      });
+        if (!t || t.status === e.target.value) return;
+        t.status = e.target.value; touch(t); logAudit('修改任務狀態', t.caseNumber || '', `${t.title} → ${t.status}`); persistAll();
+        setTimeout(() => { renderTasksPage(); renderDashboard(); }, 0);
+      };
+      sel.addEventListener('change', commit);
     });
     body.querySelectorAll('.task-detail-btn').forEach((btn) => btn.addEventListener('click', () => openTaskDetail(btn.dataset.taskId)));
     body.querySelectorAll('.task-delete-btn').forEach((btn) => {
@@ -5585,6 +5685,28 @@
     if (cdmTotal) cdmTotal.addEventListener('change', (e) => { c.contractTotalAmount = Math.max(Number(e.target.value) || 0, 0); touch(c); syncTaxFromCase(c); logAudit('修改簽約總額', c.caseNumber, `→ NT$ ${c.contractTotalAmount.toLocaleString()}`); persistAll(); refreshFeeBadge(); renderCasesTable(); renderReceivablesSummary(); renderTaxCasesTable(); });
     const cdmReceived = document.getElementById('cdm-received');
     if (cdmReceived) cdmReceived.addEventListener('change', (e) => { c.receivedAmount = Math.max(Number(e.target.value) || 0, 0); touch(c); syncTaxFromCase(c); logAudit('修改已收款', c.caseNumber, `→ NT$ ${c.receivedAmount.toLocaleString()}`); persistAll(); refreshFeeBadge(); renderCasesTable(); renderReceivablesSummary(); renderTaxCasesTable(); });
+    // 2026-08-19 會議 2b：明確「儲存」鍵——一次把詳情所有欄位讀回寫入（即使某欄沒觸發 change 也會存），並顯示「已儲存」
+    const cdmSaveBtn = document.getElementById('cdm-save');
+    if (cdmSaveBtn) cdmSaveBtn.addEventListener('click', () => {
+      const g = (id) => document.getElementById(id);
+      if (g('cdm-status')) c.status = g('cdm-status').value;
+      if (g('cdm-contract')) c.contractStatus = g('cdm-contract').value;
+      if (g('cdm-casenumber')) { const nv = g('cdm-casenumber').value.trim(); if (nv && nv !== c.caseNumber) { const old = c.caseNumber; c.caseNumber = nv; taxCases.forEach((t) => { if (t.caseNumber === old) { t.caseNumber = nv; touch(t); } }); logAudit('修改案號', old, `→ ${nv}`); } }
+      if (g('cdm-court')) c.court = g('cdm-court').value.trim();
+      if (g('cdm-division')) c.division = g('cdm-division').value.trim();
+      if (g('cdm-opponent')) c.opponentName = g('cdm-opponent').value.trim();
+      if (g('cdm-opp-att')) c.opponentAttorney = g('cdm-opp-att').value.trim();
+      if (g('cdm-mediation')) c.mediationOngoing = g('cdm-mediation').checked;
+      const arr = [...document.querySelectorAll('.cdm-att-cb')].filter((x) => x.checked).map((x) => x.value); c.attorneys = arr; c.attorney = arr.join('、');
+      if (g('cdm-total') && !c.isProBono) c.contractTotalAmount = Math.max(Number(g('cdm-total').value) || 0, 0);
+      if (g('cdm-received') && !c.isProBono) c.receivedAmount = Math.max(Number(g('cdm-received').value) || 0, 0);
+      touch(c); syncTaxFromCase(c); logAudit('儲存案件詳情', c.caseNumber, '');
+      persistAll(); refreshFeeBadge(); renderCasesPageDynamic(); renderTaxCasesTable(); renderReceivablesSummary();
+      document.getElementById('cdm-title').textContent = `案件詳情：${c.caseNumber} ${c.title || ''}`;
+      const st = g('cdm-save-status'); if (st) { st.textContent = '✓ 已儲存'; setTimeout(() => { if (st) st.textContent = ''; }, 2500); }
+    });
+    const cdmClose2 = document.getElementById('cdm-close-2');
+    if (cdmClose2) cdmClose2.addEventListener('click', () => { const m = document.getElementById('case-detail-modal'); m.classList.add('hidden'); m.classList.remove('flex'); });
     const cdmAttInput = document.getElementById('cdm-att-input');
     if (cdmAttInput) cdmAttInput.addEventListener('change', (e) => {
       const files = [...(e.target.files || [])];
