@@ -277,6 +277,23 @@
           <p class="text-[11px] text-slate-400 mt-2">還原功能未開放於介面（避免誤按覆蓋全所資料）。需要還原時請聯絡系統維護者。</p>
         </div>
 
+        <!-- 2026-08-20：系統資料維護（假日表、勞健保級距的年度更新提醒與一鍵抓取） -->
+        <div id="dash-maint-box" class="hidden bg-white rounded-lg border border-slate-200 p-5">
+          <h3 class="font-semibold text-slate-800 mb-1">🗓️ 系統資料維護</h3>
+          <p class="text-xs text-slate-500 mb-3">這兩份資料每年會變動，系統會自動提醒該更新了。假日表可直接從政府開放資料抓取。</p>
+          <div class="text-xs text-slate-600 space-y-2">
+            <div>
+              <div id="holiday-coverage">—</div>
+              <button type="button" id="btn-holiday-sync" class="mt-1.5 text-xs px-3 py-1.5 rounded border border-navy-300 text-navy-900 bg-slate-50 hover:bg-slate-100">🔄 抓取國定假日</button>
+              <div id="holiday-sync-status" class="text-[11px] mt-1.5 text-slate-500"></div>
+            </div>
+            <div class="pt-2 border-t border-slate-100">
+              <div id="ins-bracket-note">—</div>
+              <a href="https://www.bli.gov.tw/" target="_blank" rel="noopener noreferrer" class="text-[11px] text-indigo-600 hover:underline">前往勞保局查最新投保薪資分級表 →</a>
+            </div>
+          </div>
+        </div>
+
         <!-- 2026-08-20：「回復出廠」入口依丁一朗指示先收起來（程式碼保留在下方 factoryReset()，日後需要時把 hidden 拿掉即可） -->
         <div id="dash-reset-box" class="hidden bg-red-50 border-2 border-red-200 rounded-lg p-4">
           <h3 class="font-semibold text-red-700 mb-1">⚠️ 回復出廠（測試用，僅主持律師）</h3>
@@ -391,9 +408,14 @@
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 p-5">
-          <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h3 class="font-semibold text-slate-800">案件列表</h3>
-            <button id="btn-toggle-closed-cases" class="text-xs px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 hidden"></button>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- 2026-08-20：案件列表關鍵字搜尋 -->
+              <input id="case-search" placeholder="搜尋案號／當事人／案由／對造／律師" class="text-xs border border-slate-300 rounded px-2 py-1 w-56" />
+              <span id="case-search-hint" class="text-[11px] text-slate-400"></span>
+              <button id="btn-toggle-closed-cases" class="text-xs px-2 py-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 hidden"></button>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -488,7 +510,7 @@
           </div>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-5 py-2.5 font-medium">結案日期</th><th class="px-5 py-2.5 font-medium">當事人</th><th class="px-5 py-2.5 font-medium">案由</th><th class="px-5 py-2.5 font-medium">案號</th><th class="px-5 py-2.5 font-medium">結案文件</th><th class="px-5 py-2.5 font-medium">備註</th>
+              <th class="px-5 py-2.5 font-medium">結案日期</th><th class="px-5 py-2.5 font-medium">當事人</th><th class="px-5 py-2.5 font-medium">案由</th><th class="px-5 py-2.5 font-medium">案號</th><th class="px-5 py-2.5 font-medium">結案文件</th><th class="px-5 py-2.5 font-medium">備註</th><th class="px-5 py-2.5 font-medium">操作</th>
             </tr></thead>
             <tbody id="closed-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
@@ -810,6 +832,12 @@
         </form>
         <datalist id="task-case-list"></datalist>
 
+        <!-- 2026-08-20：任務搜尋 -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <input id="task-search" placeholder="搜尋任務主旨／內容／指派人／案號" class="text-xs border border-slate-300 rounded px-2 py-1 w-64" />
+          <span id="task-search-hint" class="text-[11px] text-slate-400"></span>
+        </div>
+
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <table class="w-full text-sm">
             <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
@@ -854,7 +882,7 @@
         </details>
 
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div class="px-5 pt-4 pb-2 text-sm font-semibold text-slate-700">員工一覽（<span id="hr-count">0</span> 人）</div>
+          <div class="px-5 pt-4 pb-2 text-sm font-semibold text-slate-700 flex items-center justify-between flex-wrap gap-2"><span>員工一覽（<span id="hr-count">0</span> 人）</span><span class="flex items-center gap-2"><input id="hr-search" placeholder="搜尋姓名／電話" class="text-xs border border-slate-300 rounded px-2 py-1 w-44 font-normal" /><span id="hr-search-hint" class="text-[11px] text-slate-400 font-normal"></span></span></div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
@@ -1253,6 +1281,8 @@
   // 115年（2026）國定假日，來源：行政院人事行政總處「115年政府行政機關辦公
   // 日曆表」，共36天。2026 以外年度仍是空白，需每年年初手動補上。
   const HOLIDAYS_STATUS = 'FILLED_2026_2027';
+  // 2026-08-20：勞健保投保級距表的版本年度（人事頁自動帶出用）。每年初勞保局調整後要更新這個數字與級距陣列。
+  const INS_BRACKET_YEAR = 2026;
   const HOLIDAYS = [
     '2026-01-01',
     '2026-02-14', '2026-02-15', '2026-02-16', '2026-02-17', '2026-02-18',
@@ -1285,7 +1315,18 @@
     return `${y}-${m}-${d}`;
   }
   function isWeekend(dateISO) { const d = new Date(dateISO + 'T00:00:00'); const day = d.getDay(); return day === 0 || day === 6; }
-  function isExtraHoliday(dateISO) { return HOLIDAYS.includes(dateISO); }
+  // 2026-08-20：除了寫死的 HOLIDAYS，另外支援「從政府開放資料同步進來」的假日（存 lf_holidaysSynced，跨裝置同步）。
+  // 之所以不直接覆蓋 HOLIDAYS：保留原始出處可追溯，且同步失敗時仍有內建資料可用。
+  let syncedHolidays = [];
+  try { const _sh = JSON.parse(localStorage.getItem('lf_holidaysSynced') || 'null'); if (Array.isArray(_sh)) syncedHolidays = _sh; } catch (e) { /* ignore */ }
+  function allHolidaySet() { return new Set([...HOLIDAYS, ...syncedHolidays]); }
+  function isExtraHoliday(dateISO) { return HOLIDAYS.includes(dateISO) || syncedHolidays.includes(dateISO); }
+  // 目前假日表涵蓋到哪一年（用於「快沒資料了」提醒）
+  function holidayCoverageMaxYear() {
+    let max = 0;
+    allHolidaySet().forEach((d) => { const y = Number(String(d).slice(0, 4)); if (y > max) max = y; });
+    return max;
+  }
   function isBusinessDay(dateISO) { return !isWeekend(dateISO) && !isExtraHoliday(dateISO); }
   function previousBusinessDay(dateISO) {
     let d = new Date(dateISO + 'T00:00:00');
@@ -1561,6 +1602,79 @@
     const perSheet = ranges.map((r, i) => ({ title: titles[i] || (r && r.range) || `分頁${i + 1}`, rows: (r && r.values) || [] }));
     return { perSheet, titles };
   }
+  // ==========================================================================
+  // 2026-08-20：國定假日表半自動更新（政府開放資料）
+  //  · 資料源：中華民國政府行政機關辦公日曆表（data.gov.tw）的 JSON 鏡像，允許瀏覽器直接讀取
+  //  · 刻意「不自動套用」：假日表直接決定期限計算，錯一天就可能算錯上訴期限，
+  //    因此一律抓取 → 預覽假日清單 → 人工確認 → 才寫入。
+  //  · 只取「非週末的放假日」（週末本來就由 isWeekend 處理），並保留補假、調整放假
+  // ==========================================================================
+  const HOLIDAY_JSON_URL = (year) => `https://cdn.jsdelivr.net/gh/ruyut/TaiwanCalendar/data/${year}.json`;
+  function holidayNeedsUpdate() {
+    // 距離涵蓋年度結束不到 5 個月就該提醒（例：涵蓋到 2027，2027/8 起提醒補 2028）
+    const maxY = holidayCoverageMaxYear();
+    const now = new Date(TODAY + 'T00:00:00');
+    const deadline = new Date(maxY, 11, 31); deadline.setMonth(deadline.getMonth() - 5);
+    return now >= deadline ? maxY + 1 : null;
+  }
+  async function holidaySyncFromGov(year) {
+    const setMsg = (html, cls) => { const el = document.getElementById('holiday-sync-status'); if (el) { el.className = `text-[11px] mt-1.5 ${cls || 'text-slate-500'}`; el.innerHTML = html; } };
+    try {
+      setMsg(`正在抓取 ${year} 年政府行政機關辦公日曆表…`);
+      const res = await fetch(HOLIDAY_JSON_URL(year));
+      if (!res.ok) throw new Error(`該年度資料尚未公布或無法取得（${res.status}）。政府通常於前一年中公布，請晚點再試。`);
+      const arr = await res.json();
+      if (!Array.isArray(arr) || !arr.length) throw new Error('取得的資料是空的');
+      // 轉成 ISO，並排除單純的週末（週末已由 isWeekend 處理），只留真正的國定假日/補假
+      const days = arr
+        .filter((d) => d && d.isHoliday && String(d.week) !== '六' && String(d.week) !== '日')
+        .map((d) => { const s = String(d.date); return { iso: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, desc: d.description || '假日' }; });
+      if (!days.length) throw new Error('解析後沒有取得任何國定假日，資料格式可能已變更');
+      const already = allHolidaySet();
+      const fresh = days.filter((d) => !already.has(d.iso));
+      const listHtml = days.map((d) => `${esc(d.iso)}${d.desc ? '（' + esc(d.desc) + '）' : ''}`).join('、');
+      setMsg(`${year} 年共 <b>${days.length}</b> 個放假日（不含一般週末），其中 ${fresh.length} 個是新的：<br><span class="text-slate-600">${listHtml}</span>`);
+      confirmModal({
+        title: `加入 ${year} 年國定假日`,
+        message: `將把 ${year} 年的 ${days.length} 個放假日加入假日表（新增 ${fresh.length} 筆），期限計算會用到。資料來源為政府行政機關辦公日曆表，請先核對上方清單是否正確。`,
+        confirmText: '確認加入', danger: false,
+      }, () => {
+        const set = new Set(syncedHolidays);
+        days.forEach((d) => set.add(d.iso));
+        syncedHolidays = [...set].sort();
+        persistAll();
+        try { logAudit('更新國定假日表', String(year), `${days.length} 個放假日（來源：政府開放資料）`); persistAll(); } catch (e) { /* ignore */ }
+        setMsg(`✓ 已加入 ${year} 年假日，假日表現在涵蓋到 ${holidayCoverageMaxYear()} 年`, 'text-emerald-600');
+        try { renderDashboard(); } catch (e) { /* ignore */ }
+      });
+    } catch (e) { setMsg(`⚠ ${esc((e && e.message) || e)}`, 'text-amber-600'); }
+  }
+  // 首頁「系統資料維護」區塊：假日表狀態＋勞健保級距年度提醒
+  function renderMaintenanceBox() {
+    const box = document.getElementById('dash-maint-box'); if (!box) return;
+    const u = currentUser();
+    box.classList.toggle('hidden', !(u && u.canSeeFinance));
+    if (!(u && u.canSeeFinance)) return;
+    const maxY = holidayCoverageMaxYear();
+    const need = holidayNeedsUpdate();
+    const hEl = document.getElementById('holiday-coverage');
+    if (hEl) {
+      hEl.innerHTML = need
+        ? `<span class="text-amber-600 font-semibold">⚠ 假日表目前只到 ${maxY} 年底，建議補上 ${need} 年</span>（期限計算會用到，沒補會算錯）`
+        : `假日表涵蓋到 <b>${maxY}</b> 年底，目前充足`;
+    }
+    const btn = document.getElementById('btn-holiday-sync');
+    if (btn) btn.textContent = `🔄 抓取 ${need || (maxY + 1)} 年國定假日`;
+    // 勞健保級距年度提醒
+    const insEl = document.getElementById('ins-bracket-note');
+    if (insEl) {
+      const curY = Number(TODAY.slice(0, 4));
+      insEl.innerHTML = curY > INS_BRACKET_YEAR
+        ? `<span class="text-amber-600 font-semibold">⚠ 勞健保投保級距表是 ${INS_BRACKET_YEAR} 年版，今年已是 ${curY} 年</span>——請到勞保局查最新分級表，再請維護者更新（人事頁的自動帶出會用到）`
+        : `勞健保投保級距表為 <b>${INS_BRACKET_YEAR}</b> 年版，與今年相符`;
+    }
+  }
+
   async function conflictSyncFromSheet() {
     const setMsg = (html, cls) => { const el = document.getElementById('conflict-sync-status'); if (el) { el.className = `text-[11px] mt-1.5 ${cls || 'text-slate-500'}`; el.innerHTML = html; } };
     try {
@@ -1719,7 +1833,7 @@
   // 瀏覽器不支援 IndexedDB（或 jsdom 測試環境）時自動整層退回 localStorage，行為與 v1 完全相同。
   const IDB_NAME = 'lawfirm_preview_db';
   const IDB_STORE = 'kv';
-  const PERSIST_KEYS = ['lf_cases', 'lf_hearings', 'lf_deadlines', 'lf_closedCases', 'lf_closedCasesImported', 'lf_files', 'lf_clients', 'lf_billing', 'lf_taxCases', 'lf_retainerContracts', 'lf_caseHours', 'lf_tasks', 'lf_pettyCash', 'lf_currentUserId', 'lf_aiConsent', 'lf_auditLog', 'lf_todoDone', 'lf_todoDoneAt', 'lf_todoHidden', 'lf_employees', 'lf_leaveRequests', 'lf_trash'];
+  const PERSIST_KEYS = ['lf_cases', 'lf_hearings', 'lf_deadlines', 'lf_closedCases', 'lf_closedCasesImported', 'lf_files', 'lf_clients', 'lf_billing', 'lf_taxCases', 'lf_retainerContracts', 'lf_caseHours', 'lf_tasks', 'lf_pettyCash', 'lf_currentUserId', 'lf_aiConsent', 'lf_auditLog', 'lf_todoDone', 'lf_todoDoneAt', 'lf_todoHidden', 'lf_holidaysSynced', 'lf_employees', 'lf_leaveRequests', 'lf_trash'];
   function idbOpenDB() {
     return new Promise((resolve) => {
       try {
@@ -1974,6 +2088,7 @@
       if ('lf_todoDone' in data) { completedTodoIds = new Set(data.lf_todoDone || []); _setLocalOnly('lf_todoDone', data.lf_todoDone || []); }
       if ('lf_todoDoneAt' in data) { completedTodoAt = data.lf_todoDoneAt || {}; _setLocalOnly('lf_todoDoneAt', completedTodoAt); }
       if ('lf_todoHidden' in data) { hiddenTodoIds = new Set(data.lf_todoHidden || []); _setLocalOnly('lf_todoHidden', data.lf_todoHidden || []); }
+      if ('lf_holidaysSynced' in data) { syncedHolidays = data.lf_holidaysSynced || []; _setLocalOnly('lf_holidaysSynced', syncedHolidays); }
       if ('lf_aiConsent' in data) { _setLocalOnly('lf_aiConsent', data.lf_aiConsent); }
       if ('lf_trash' in data) { trash = cloudMergeById(trash, data.lf_trash, null, lw); _setLocalOnly('lf_trash', trash); }
       applyTrashFilter(); // 把別台已刪除的資料濾掉（含本機還留著、又被合併回來的）
@@ -2334,6 +2449,7 @@
     saveState('lf_todoDone', [...completedTodoIds]);
     saveState('lf_todoDoneAt', completedTodoAt);
     saveState('lf_todoHidden', [...hiddenTodoIds]);
+    saveState('lf_holidaysSynced', syncedHolidays);
     saveState('lf_trash', trash);
   }
 
@@ -2449,6 +2565,7 @@
     { const bb = document.getElementById('dash-backup-box'); const u2 = currentUser(); if (bb) { bb.classList.toggle('hidden', !(u2 && u2.canSeeFinance)); if (u2 && u2.canSeeFinance) renderBackupStatus(); } }
     // 管制表同步鈕：主持律師與財務可見（會覆蓋全所共用的管制表，不開放給所有人）
     { const sb = document.getElementById('conflict-sync-box'); const u3 = currentUser(); if (sb) sb.classList.toggle('hidden', !(u3 && u3.canSeeFinance)); refreshConflictCount(); }
+    try { renderMaintenanceBox(); } catch (e) { /* ignore */ }
     document.getElementById('dash-today').textContent = `${TODAY}（週${['日', '一', '二', '三', '四', '五', '六'][new Date(TODAY + 'T00:00:00').getDay()]}）`;
     renderScopeToggle();
     const scopeAttorney = scopeAttorneyFilter();
@@ -2503,6 +2620,10 @@
 
   // 2026-08-20：管制表線上同步按鈕
   { const _cs = document.getElementById('btn-conflict-sync'); if (_cs) _cs.addEventListener('click', () => { conflictSyncFromSheet(); }); }
+  { const _tsq = document.getElementById('task-search'); if (_tsq) _tsq.addEventListener('input', (e) => { taskSearchQuery = e.target.value; renderTasksPage(); }); }
+  { const _hsq = document.getElementById('hr-search'); if (_hsq) _hsq.addEventListener('input', (e) => { hrSearchQuery = e.target.value; renderHRPage(); }); }
+  { const _csq = document.getElementById('case-search'); if (_csq) _csq.addEventListener('input', (e) => { caseSearchQuery = e.target.value; renderCasesTable(); }); }
+  { const _hs = document.getElementById('btn-holiday-sync'); if (_hs) _hs.addEventListener('click', () => { const y = holidayNeedsUpdate() || (holidayCoverageMaxYear() + 1); holidaySyncFromGov(y); }); }
 
   // 2026-07-16 審查修正：利益衝突快速查詢原本只是一個沒有任何行為的輸入框，現在改為即時比對
   // 本機資料——客戶名單、現有案件（當事人＋對造＋對造律師）、已結案紀錄（當事人＋備註內對造）。
@@ -2548,6 +2669,11 @@
   // 案件與時效
   // ==========================================================================
   let showClosedCases = false;
+  let caseSearchQuery = ''; // 2026-08-20 案件列表搜尋關鍵字（僅本機 session）
+  let taskSearchQuery = '';  // 任務搜尋
+  let editingHearingId = null;  // 開庭 inline 編輯中
+  let editingDeadlineId = null; // 期限 inline 編輯中
+  let hrSearchQuery = '';    // 員工搜尋
   // 2026-07-22 修正同名同姓客戶 bug：案件改「綁定到具體客戶 id（clientId）」，不再只靠姓名比對。
   //   - 新案件開案時就寫入 c.clientId（指向 findExistingClient 解析出的那一筆客戶），兩個同名不同人不會再混在一起。
   //   - 舊資料（沒有 clientId）才退回姓名比對，且僅在「同名客戶只有一筆」時才對應，避免舊資料誤掛到多筆同名客戶。
@@ -2588,7 +2714,14 @@
     toggleBtn.classList.toggle('hidden', closedCount === 0);
     toggleBtn.textContent = showClosedCases ? `隱藏已結案（${closedCount} 件）` : `顯示已結案（${closedCount} 件）`;
 
-    const visible = showClosedCases ? cases : cases.filter((c) => !isClosedStatus(c.status));
+    let visible = showClosedCases ? cases : cases.filter((c) => !isClosedStatus(c.status));
+    // 2026-08-20：案件列表關鍵字搜尋（案號／當事人／案由／對造／承辦律師／機關法院）
+    const q = String(caseSearchQuery || '').trim();
+    if (q) {
+      visible = visible.filter((c) => [c.caseNumber, caseParty(c), caseCause(c), c.title, c.opponentName, c.opponentAttorney, caseAttorneyText(c), c.court, c.division]
+        .some((f) => String(f || '').includes(q)));
+    }
+    { const hint = document.getElementById('case-search-hint'); if (hint) hint.textContent = q ? `符合「${q}」共 ${visible.length} 件` : ''; }
     document.getElementById('cases-table-body').innerHTML = visible.map((c) => {
       const matchedClient = getCaseClientMatch(c);
       const fee = feeStatusDisplay(c);
@@ -3149,10 +3282,18 @@
           <div class="font-mono text-xs text-slate-400">${esc(h.date)}${h.allDay ? '（整日）' : ''}</div>
           <div class="flex items-center gap-2">
             ${googleCalendarLinkHTML(h)}
+            <button type="button" data-hearing-id="${esc(h.id)}" class="btn-edit-hearing text-[11px] text-indigo-600 hover:underline whitespace-nowrap">${editingHearingId === h.id ? '取消' : '改期/編輯'}</button>
             <button type="button" data-hearing-id="${esc(h.id)}" class="btn-del-hearing text-[11px] text-rose-500 hover:underline whitespace-nowrap">刪除</button>
           </div>
         </div>
-        <div>${esc(h.title)}</div>
+        ${editingHearingId === h.id ? `
+        <div class="mt-1 flex flex-wrap items-end gap-2">
+          <label class="text-[11px] text-slate-500">日期<input type="date" class="he-field block text-xs border rounded px-1.5 py-1" data-field="date" value="${esc(h.date || '')}" /></label>
+          <label class="text-[11px] text-slate-500">時間<input type="time" class="he-field block text-xs border rounded px-1.5 py-1" data-field="time" value="${esc(h.time || '')}" /></label>
+          <label class="text-[11px] text-slate-500 flex-1 min-w-[140px]">事由/標題<input class="he-field block w-full text-xs border rounded px-1.5 py-1" data-field="title" value="${esc(h.title || '')}" /></label>
+          <label class="text-[11px] text-slate-500">法庭<input class="he-field block text-xs border rounded px-1.5 py-1 w-24" data-field="courtroom" value="${esc(h.courtroom || '')}" /></label>
+          <button type="button" data-hearing-id="${esc(h.id)}" class="btn-save-hearing text-xs px-3 py-1 rounded bg-navy-900 text-white">儲存</button>
+        </div>` : `<div>${esc(h.title)}</div>`}
       </div>`).join('') || '<div class="text-slate-400">尚無開庭紀錄</div>';
 
     document.getElementById('deadline-list').innerHTML = [...deadlines].sort((a, b) => (a.computedDeadline || '').localeCompare(b.computedDeadline || '')).map((d) => `
@@ -3160,11 +3301,45 @@
         <div class="font-mono text-xs text-slate-400 flex items-center gap-2">${esc(d.computedDeadline)}
           ${d.kind === 'reminder' ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">提前提醒</span>' : ''}
           ${d.kind === 'general' ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">一般期限</span>' : ''}
-          <button type="button" data-deadline-id="${esc(d.id)}" class="btn-del-deadline ml-auto text-[11px] text-rose-500 hover:underline whitespace-nowrap">刪除</button>
+          <button type="button" data-deadline-id="${esc(d.id)}" class="btn-edit-deadline ml-auto text-[11px] text-indigo-600 hover:underline whitespace-nowrap">${editingDeadlineId === d.id ? '取消' : '編輯'}</button>
+          <button type="button" data-deadline-id="${esc(d.id)}" class="btn-del-deadline text-[11px] text-rose-500 hover:underline whitespace-nowrap">刪除</button>
         </div>
-        <div>${esc(d.displayTitle || d.eventType)}</div>
+        ${editingDeadlineId === d.id ? `
+        <div class="mt-1 flex flex-wrap items-end gap-2">
+          <label class="text-[11px] text-slate-500">末日<input type="date" class="de-field block text-xs border rounded px-1.5 py-1" data-field="computedDeadline" value="${esc(d.computedDeadline || '')}" /></label>
+          <label class="text-[11px] text-slate-500 flex-1 min-w-[140px]">事由<input class="de-field block w-full text-xs border rounded px-1.5 py-1" data-field="displayTitle" value="${esc(d.displayTitle || d.eventType || '')}" /></label>
+          <button type="button" data-deadline-id="${esc(d.id)}" class="btn-save-deadline text-xs px-3 py-1 rounded bg-navy-900 text-white">儲存</button>
+          <span class="text-[10px] text-amber-600 w-full">⚠ 手動修改末日不會重新套用期限規則，請自行確認日期正確</span>
+        </div>` : `<div>${esc(d.displayTitle || d.eventType)}</div>`}
       </div>`).join('') || '<div class="text-slate-400">尚無末日/提醒紀錄</div>';
 
+    // 2026-08-20：開庭「改期/編輯」與期限「編輯」——法院改期是常態，原本只能刪掉重建
+    document.querySelectorAll('.btn-edit-hearing').forEach((btn) => {
+      btn.addEventListener('click', () => { editingHearingId = editingHearingId === btn.dataset.hearingId ? null : btn.dataset.hearingId; editingDeadlineId = null; renderHearingAndDeadlineLists(); });
+    });
+    document.querySelectorAll('.btn-save-hearing').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const h = hearings.find((x) => x.id === btn.dataset.hearingId); if (!h) return;
+        const wrap = btn.closest('div'); if (!wrap) return;
+        wrap.querySelectorAll('.he-field').forEach((f) => { h[f.dataset.field] = f.value.trim(); });
+        if (h.time) h.allDay = false;
+        touch(h); logAudit('修改開庭', h.caseNumberDisplay || '', `${h.date} ${h.time || ''} ${h.title || ''}`);
+        editingHearingId = null; persistAll(); renderHearingAndDeadlineLists(); renderCalendar(); renderTodoBoard(); renderDashboard();
+      });
+    });
+    document.querySelectorAll('.btn-edit-deadline').forEach((btn) => {
+      btn.addEventListener('click', () => { editingDeadlineId = editingDeadlineId === btn.dataset.deadlineId ? null : btn.dataset.deadlineId; editingHearingId = null; renderHearingAndDeadlineLists(); });
+    });
+    document.querySelectorAll('.btn-save-deadline').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const d = deadlines.find((x) => x.id === btn.dataset.deadlineId); if (!d) return;
+        const wrap = btn.closest('div'); if (!wrap) return;
+        wrap.querySelectorAll('.de-field').forEach((f) => { d[f.dataset.field] = f.value.trim(); });
+        d.manuallyEdited = true; // 標記為人工修改過，提醒不再視為規則自動算出
+        touch(d); logAudit('修改期限', d.caseNumberDisplay || '', `${d.computedDeadline} ${d.displayTitle || ''}`);
+        editingDeadlineId = null; persistAll(); renderHearingAndDeadlineLists(); renderCalendar(); renderTodoBoard(); renderDashboard();
+      });
+    });
     document.querySelectorAll('.btn-del-hearing').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.hearingId;
@@ -3414,7 +3589,19 @@
         <td class="px-5 py-3 text-xs font-mono">${esc((c.caseNumbers || []).join('、') || c.caseNumberRaw || '—')}</td>
         <td class="px-5 py-3">${esc(c.closingDocument || '—')}${c.closingDocFile ? `<a href="${c.closingDocFile.data}" download="${esc(c.closingDocFile.name)}" class="ml-1 text-[11px] text-indigo-700 hover:underline">📎 ${esc(c.closingDocFile.name)}</a>` : ''}</td>
         <td class="px-5 py-3 text-xs">${c.excludeFromReporting ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 mr-1.5">不計入結案</span>' : ''}${esc(c.note) || (c.excludeFromReporting ? '' : '—')}</td>
-      </tr>`).join('') || `<tr><td class="px-5 py-6 text-center text-slate-400" colspan="6">${closedCasesImported ? '此律師尚無資料' : '請先點上方按鈕匯入歷史資料，或至「案件與時效」頁點選案件的「✓ 結案」按鈕登記'}</td></tr>`;
+        <td class="px-5 py-3 whitespace-nowrap"><button type="button" class="btn-closed-del text-xs text-rose-500 hover:underline" data-closed-id="${esc(c.id)}">刪除</button></td>
+      </tr>`).join('') || `<tr><td class="px-5 py-6 text-center text-slate-400" colspan="7">${closedCasesImported ? '此律師尚無資料' : '請先點上方按鈕匯入歷史資料，或至「案件與時效」頁點選案件的「✓ 結案」按鈕登記'}</td></tr>`;
+    // 2026-08-20：結案紀錄可刪除（誤登記時用；先進垃圾桶可復原）
+    document.querySelectorAll('.btn-closed-del').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cc = closedCases.find((x) => x.id === btn.dataset.closedId); if (!cc) return;
+        confirmModal({
+          title: '刪除結案紀錄',
+          message: `確定刪除「${cc.person || ''} ${cc.cause || ''}」這筆結案紀錄嗎？（刪除後可到「垃圾桶」復原；原案件不受影響）`,
+          confirmText: '刪除',
+        }, () => { moveToTrash('lf_closedCases', cc.id, '刪除結案紀錄'); renderClosedCasesPage(); renderDashboard(); });
+      });
+    });
   }
 
   // 2026-07-14 三次會議：手動新增結案登記表單(#form-closed-case)已移除——統一由案件列表的「✓ 結案」按鈕
@@ -3497,6 +3684,7 @@
             <div class="flex items-center gap-1.5 flex-shrink-0">
               <button type="button" class="btn-client-toggle-cases text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50 whitespace-nowrap" data-client-id="${esc(c.id)}">${expandedClientId === c.id ? '收起' : `歷史案件 (${caseCount})`}</button>
               <button type="button" class="btn-client-edit text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50 whitespace-nowrap" data-client-id="${esc(c.id)}">編輯</button>
+              <button type="button" class="btn-client-del text-xs px-2 py-1 rounded border border-red-200 text-red-500 hover:bg-red-50 whitespace-nowrap" data-client-id="${esc(c.id)}">刪除</button>
             </div>
           </div>
         </td>
@@ -3508,6 +3696,18 @@
     });
     document.querySelectorAll('.btn-client-edit').forEach((btn) => {
       btn.addEventListener('click', () => { editingClientId = btn.dataset.clientId; renderClients(); });
+    });
+    // 2026-08-20：客戶可刪除（先進垃圾桶可復原）。若該客戶還有關聯案件會先提醒。
+    document.querySelectorAll('.btn-client-del').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const cl = clients.find((x) => x.id === btn.dataset.clientId); if (!cl) return;
+        const linked = cases.filter((c) => c.clientId === cl.id || (!c.clientId && caseParty(c) === cl.name)).length;
+        confirmModal({
+          title: '刪除客戶',
+          message: `確定刪除客戶「${cl.name}」嗎？${linked ? `注意：這位客戶還有 ${linked} 件關聯案件，刪除後案件仍會保留，但客戶資料會消失。` : ''}（刪除後可到「垃圾桶」復原）`,
+          confirmText: '刪除',
+        }, () => { moveToTrash('lf_clients', cl.id, '刪除客戶'); renderClients(); renderDashboard(); });
+      });
     });
     document.querySelectorAll('.btn-client-cancel').forEach((btn) => {
       btn.addEventListener('click', () => { editingClientId = null; renderClients(); });
@@ -4716,8 +4916,12 @@
         <td class="px-5 py-2 whitespace-nowrap"><button data-task-id="${esc(t.id)}" class="task-detail-btn text-xs text-indigo-600 hover:underline mr-2">詳情</button><button data-task-id="${esc(t.id)}" class="task-delete-btn text-xs text-rose-500 hover:underline">刪除</button></td>
       </tr>`;
     };
-    const openTasks = tasks.filter((t) => !taskIsClosed(t)).sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
-    const doneTasks = tasks.filter((t) => taskIsClosed(t)).sort((a, b) => String(b.dueDate).localeCompare(String(a.dueDate)));
+    // 2026-08-20：任務關鍵字搜尋（主旨／內容／指派人／被指派人／案號）
+    const tq = String(taskSearchQuery || '').trim();
+    const matchTask = (t) => !tq || [t.title, t.content, t.assigner, t.assignee, t.caseNumber, t.note].some((f) => String(f || '').includes(tq));
+    const openTasks = tasks.filter((t) => !taskIsClosed(t) && matchTask(t)).sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+    const doneTasks = tasks.filter((t) => taskIsClosed(t) && matchTask(t)).sort((a, b) => String(b.dueDate).localeCompare(String(a.dueDate)));
+    { const h = document.getElementById('task-search-hint'); if (h) h.textContent = tq ? `符合「${tq}」共 ${openTasks.length + doneTasks.length} 筆` : ''; }
     body.innerHTML = (openTasks.length ? openTasks.map(rowHtml).join('') : '<tr><td class="px-5 py-3 text-slate-400" colspan="7">目前沒有進行中的任務</td></tr>')
       + (doneTasks.length ? `<tr class="bg-slate-100/70"><td colspan="7" class="px-5 py-1.5 text-[11px] font-semibold text-slate-400">─── 已完成／已取消（${doneTasks.length}）───</td></tr>` + doneTasks.map(rowHtml).join('') : '');
     body.querySelectorAll('.task-status-select').forEach((sel) => {
@@ -4808,7 +5012,11 @@
   function renderHRPage() {
     const body = document.getElementById('hr-table-body'); if (!body) return;
     const cnt = document.getElementById('hr-count'); if (cnt) cnt.textContent = employees.length;
-    body.innerHTML = employees.map((e) => {
+    // 2026-08-20：員工搜尋（姓名／電話）
+    const hq = String(hrSearchQuery || '').trim();
+    const empRows = hq ? employees.filter((e) => [e.name, e.phone, e.idNumber].some((f) => String(f || '').includes(hq))) : employees;
+    { const h = document.getElementById('hr-search-hint'); if (h) h.textContent = hq ? `符合 ${empRows.length} 人` : ''; }
+    body.innerHTML = empRows.map((e) => {
       const leave = hrAnnualLeaveDays(e.hireDate, TODAY);
       const nextHC = hrNextHealthCheckDue(e, TODAY);
       const remain = nextHC ? daysUntil(nextHC) : null;
@@ -4891,7 +5099,11 @@
     for (const d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     return out;
   }
-  function leaveDaysInclusive(sISO, eISO) { return leaveEachDate(sISO, eISO).length; }
+  // 2026-08-20 修正：請假天數原本算「日曆日」，週五請到週一會算成 4 天，員工的特休被多扣。
+  // 改為只算工作日（扣掉週末與國定假日，沿用期限計算用的同一份假日表）。
+  function leaveWorkingDates(sISO, eISO) { return leaveEachDate(sISO, eISO).filter((d) => isBusinessDay(d)); }
+  function leaveDaysInclusive(sISO, eISO) { return leaveWorkingDates(sISO, eISO).length; }
+  function leaveCalendarDays(sISO, eISO) { return leaveEachDate(sISO, eISO).length; }
   function currentAnniversaryStartISO(hireISO, asOf) {
     const h = _hrDate(hireISO), a = _hrDate(asOf); if (!h || !a) return null;
     let ann = new Date(a.getFullYear(), h.getMonth(), h.getDate());
@@ -4999,7 +5211,10 @@
         const session = fd.get('session') || '全天';
         let effEnd = endDate, days;
         if (session === '上午' || session === '下午') { effEnd = startDate; days = 0.5; }
-        else { days = leaveDaysInclusive(startDate, endDate); }
+        else {
+          days = leaveDaysInclusive(startDate, endDate); // 2026-08-20：只算工作日（已扣週末與國定假日）
+          if (days === 0) { document.getElementById('leave-form-hint').innerHTML = '<span class="text-amber-600">這個區間全都是週末或國定假日（0 個工作日），不需要請假</span>'; return; }
+        }
         leaveRequests.push({ id: 'lv' + Date.now(), employeeId: empId, employeeName: emp.name, type, startDate, endDate: effEnd, session, days, reason: fd.get('reason') || '', status: LEAVE_STATUSES.PENDING, appliedAt: new Date().toISOString() });
         logAudit('申請請假', emp.name, `${type} ${startDate}~${effEnd}（${days}天${session === '全天' ? '' : '・' + session}）`);
         ev.target.reset(); persistAll(); renderLeavePage();
@@ -5188,7 +5403,7 @@
         <td class="px-5 py-2.5 text-amber-700 whitespace-nowrap">${p.expense ? 'NT$ ' + Number(p.expense).toLocaleString() : '—'}</td>
         <td class="px-5 py-2.5 font-medium whitespace-nowrap">NT$ ${p.balance.toLocaleString()}</td>
         <td class="px-5 py-2.5 whitespace-nowrap">${p.voucherType && p.voucherType !== '無單據' ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">${esc(p.voucherType)}</span>` : '<span class="text-[10px] text-slate-400">無單據</span>'}</td>
-        <td class="px-5 py-2.5 whitespace-nowrap"><button type="button" class="btn-petty-delete text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50" data-petty-id="${esc(p.id)}">刪除</button></td>
+        <td class="px-5 py-2.5 whitespace-nowrap"><button type="button" class="btn-petty-edit text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50 mr-1" data-petty-id="${esc(p.id)}">編輯</button><button type="button" class="btn-petty-delete text-xs px-2 py-1 rounded border border-slate-300 text-slate-500 hover:bg-slate-50" data-petty-id="${esc(p.id)}">刪除</button></td>
       </tr>`).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="10">尚無零用金紀錄</td></tr>';
     balanceEl.textContent = `目前結餘　${running}`;
 
@@ -5206,8 +5421,27 @@
     document.querySelectorAll('.btn-petty-delete').forEach((btn) => {
       btn.addEventListener('click', () => {
         const p = pettyCash.find((x) => x.id === btn.dataset.pettyId);
-        moveToTrash('lf_pettyCash', btn.dataset.pettyId, '刪除零用金');
-        renderPettyCash();
+        confirmModal({
+          title: '刪除零用金紀錄',
+          message: `確定刪除「${(p && p.summary) || ''}」這筆嗎？（刪除後可到「垃圾桶」復原）`,
+          confirmText: '刪除',
+        }, () => { moveToTrash('lf_pettyCash', btn.dataset.pettyId, '刪除零用金'); renderPettyCash(); });
+      });
+    });
+    // 2026-08-20：零用金可編輯（原本金額打錯只能刪掉重登）——用 prompt 逐欄修改，改完重算結餘
+    document.querySelectorAll('.btn-petty-edit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const p = pettyCash.find((x) => x.id === btn.dataset.pettyId); if (!p) return;
+        const summary = window.prompt('摘要：', p.summary || ''); if (summary === null) return;
+        const income = window.prompt('收入金額（沒有就填 0）：', String(Number(p.income) || 0)); if (income === null) return;
+        const expense = window.prompt('支出金額（沒有就填 0）：', String(Number(p.expense) || 0)); if (expense === null) return;
+        const date = window.prompt('年月日（YYYY-MM-DD）：', p.date || ''); if (date === null) return;
+        p.summary = String(summary).trim();
+        p.income = Math.max(Number(income) || 0, 0);
+        p.expense = Math.max(Number(expense) || 0, 0);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(String(date).trim())) p.date = String(date).trim();
+        touch(p); logAudit('修改零用金', p.claimant || '', `${p.date} ${p.summary}｜收 ${p.income} / 支 ${p.expense}`);
+        persistAll(); renderPettyCash();
       });
     });
   }
