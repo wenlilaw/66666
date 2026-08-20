@@ -139,10 +139,6 @@
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h4m1-13H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-6-6z"/></svg>
         <span class="text-sm font-medium">法顧契約管理</span>
       </button>
-      <button data-page="page-files" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span class="text-sm font-medium">文件與檔名產生器</span>
-      </button>
       <button data-page="page-billing" data-role-gate="finance" class="navitem w-full flex items-center gap-3 px-6 py-3 text-left text-slate-300 border-l-2 border-transparent hover:bg-white/5">
         <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.66 0-3 .9-3 2s1.34 2 3 2 3 .9 3 2-1.34 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 2v8m0 0v2m0-2c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span class="text-sm font-medium">財務與代墊款</span>
@@ -266,9 +262,19 @@
           <div id="dash-upcoming" class="space-y-2 text-sm"></div>
         </div>
 
+        <!-- 2026-08-20：資料保全（自動每日雲端快照狀態 ＋ 手動匯出存檔）。刻意「不提供還原按鈕」，避免同仁誤按覆蓋全所資料。 -->
+        <div id="dash-backup-box" class="hidden bg-white rounded-lg border border-slate-200 p-5">
+          <h3 class="font-semibold text-slate-800 mb-1">🛡️ 資料保全</h3>
+          <p class="text-xs text-slate-500 mb-3">系統每天會自動把全所資料存一份快照到雲端（保留最近 30 天，不需要任何人操作）。建議每月再手動匯出一份存到 Google Drive 或隨身碟，萬一雲端帳號出問題時可用。</p>
+          <div id="dash-backup-status" class="text-xs text-slate-500 mb-3">自動快照狀態：檢查中…</div>
+          <button type="button" id="btn-backup-export" class="text-xs px-3 py-2 rounded border border-indigo-300 text-indigo-700 bg-indigo-50 hover:bg-indigo-100">⬇ 匯出備份存檔（JSON）</button>
+          <p class="text-[11px] text-slate-400 mt-2">還原功能未開放於介面（避免誤按覆蓋全所資料）。需要還原時請聯絡系統維護者。</p>
+        </div>
+
+        <!-- 2026-08-20：「回復出廠」入口依丁一朗指示先收起來（程式碼保留在下方 factoryReset()，日後需要時把 hidden 拿掉即可） -->
         <div id="dash-reset-box" class="hidden bg-red-50 border-2 border-red-200 rounded-lg p-4">
           <h3 class="font-semibold text-red-700 mb-1">⚠️ 回復出廠（測試用，僅主持律師）</h3>
-          <p class="text-xs text-red-600 mb-3">會清空「全所所有裝置」的案件、客戶、財務、人事、任務等資料（雲端與本機一起歸零），供重新測試。<b>不會刪除利益衝突管制表</b>。此動作無法復原。</p>
+          <p class="text-xs text-red-600 mb-3">會清空「全所所有裝置」的案件、客戶、財務、人事、任務等資料（雲端與本機一起歸零），供重新測試。<b>不會刪除利益衝突管制表，也不會刪除每日自動快照</b>。此動作無法復原。</p>
           <button type="button" id="btn-factory-reset" class="text-xs px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700">清空所有資料，回復出廠</button>
         </div>
 
@@ -511,24 +517,7 @@
         </div>
       </section>
 
-      <!-- ============ 文件與檔名產生器 ============ -->
-      <section id="page-files" class="page space-y-4">
-        <h1 class="text-2xl font-bold text-slate-900">文件與檔名產生器</h1>
-        <p class="text-slate-500 text-sm -mt-2">依事務所規則自動組成建議檔名，不會讀取 PDF 內容、也不會自動改實際檔案名稱</p>
-        <div id="form-filenaming-wrap"></div>
-        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-700">卷宗清單</span>
-            <div id="files-category-tabs" class="flex items-center gap-1.5"></div>
-          </div>
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-              <th class="px-5 py-2.5 font-medium">原始檔名</th><th class="px-5 py-2.5 font-medium">建議檔名</th><th class="px-5 py-2.5 font-medium">分類</th>
-            </tr></thead>
-            <tbody id="files-table-body" class="divide-y divide-slate-100"></tbody>
-          </table>
-        </div>
-      </section>
+      <!-- 2026-08-20：「文件與檔名產生器」整頁已依丁一朗指示移除（後續討論用不到） -->
 
       <!-- ============ 財務與代墊款 ============ -->
       <section id="page-billing" class="page space-y-4">
@@ -1054,7 +1043,7 @@
           </div>
           <button id="btn-export-audit-csv" type="button" class="text-xs px-3 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 whitespace-nowrap">匯出開放式格式 (Google Sheets/CSV)</button>
         </div>
-        <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-2.5 rounded-lg font-medium">🔒 此分頁僅主持律師與財務行政可見；紀錄無法由介面刪除（僅「重設所有示範資料」會一併清空）</div>
+        <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs px-4 py-2.5 rounded-lg font-medium">🔒 此分頁僅主持律師與財務行政可見；紀錄無法由介面刪除（僅首頁「回復出廠」會一併清空）</div>
         <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div class="px-5 py-3 border-b border-slate-200 text-xs text-slate-400" id="audit-count"></div>
           <table class="w-full text-sm">
@@ -1352,8 +1341,6 @@
   // ---- fileNaming.js ----
   const FILE_NAMING_STATUS = 'DRAFT_DETERMINISTIC_NO_AI';
   // 文件分類（2026-07-09 兩位行政人員與丁一朗盤點需求後決定的架構）
-  const DOC_CATEGORIES = ['委任狀', '公文', '書狀', '開庭', '進度管理'];
-  const CATEGORY_BADGE = { 委任狀: 'bg-violet-50 text-violet-700', 公文: 'bg-amber-50 text-amber-700', 書狀: 'bg-blue-50 text-blue-700', 開庭: 'bg-rose-50 text-rose-700', 進度管理: 'bg-emerald-50 text-emerald-700' };
   function shortMDTime(dateISO, timeHHMM) {
     if (!dateISO) return '';
     const [, m, d] = dateISO.split('-'); const time = (timeHHMM || '').replace(':', '');
@@ -1669,6 +1656,11 @@
   // 其他台看到 resetAt 比自己記錄的新，就清空本機並重載，達成全所一起歸零。
   let cloudKnownResetAt = 0; try { cloudKnownResetAt = Number(localStorage.getItem('lf_lastResetApplied')) || 0; } catch (e) { /* ignore */ }
   let cloudResetChecked = false; // 登入後必須先向雲端確認「有沒有被回復出廠」，確認完成前禁止任何上傳（避免舊裝置把舊資料推回去）
+  // 2026-08-20：「回復出廠」入口先收起來（丁一朗指示）。日後要重新啟用，把這行改成 true 即可，程式碼都還在。
+  const FACTORY_RESET_ENABLED = false;
+  // 2026-08-20：每日自動雲端快照設定。每天第一位登入者自動存一份到 firmBackups/YYYY-MM-DD，保留最近 N 天。
+  const BACKUP_KEEP_DAYS = 30;
+  let lastBackupInfo = null; // { date, count } 供首頁顯示狀態
   let cloudAutoOn = false;
   try { cloudAutoOn = localStorage.getItem('lf_cloudAuto') === '1'; } catch (e) { /* ignore */ }
   let cloudLiveOn = false;
@@ -1901,7 +1893,6 @@
       typeof renderReceivablesSummary !== 'undefined' && renderReceivablesSummary,
       typeof renderPettyCash !== 'undefined' && renderPettyCash,
       typeof renderRetainerContracts !== 'undefined' && renderRetainerContracts,
-      typeof renderFilesTable !== 'undefined' && renderFilesTable,
       typeof renderAuditPage !== 'undefined' && renderAuditPage,
       typeof renderTasks !== 'undefined' && renderTasks,
       typeof renderHRPage !== 'undefined' && renderHRPage,
@@ -1929,7 +1920,46 @@
       }
       cloudResetChecked = true;
       try { cloudStartLiveSync(); } catch (e) { /* ignore */ }
+      setTimeout(() => { try { cloudDailySnapshot(); } catch (e) { /* ignore */ } }, 3000); // 等資料載入穩定後再存當日快照
     }).catch(() => { cloudResetChecked = true; try { cloudStartLiveSync(); } catch (e) { /* ignore */ } });
+  }
+  // ==========================================================================
+  // 2026-08-20 每日自動雲端快照（免費方案即可：一天只寫 1 筆，Firestore 免費額度為每日 20,000 次寫入）
+  //  · 每天第一位登入的同事會自動存一份當下全所資料到 firmBackups/YYYY-MM-DD，同日不重複存
+  //  · 保留最近 BACKUP_KEEP_DAYS 天，更舊的自動刪除，不會無限累積
+  //  · 「回復出廠」只清 firmState/main，不會動到 firmBackups → 誤按回復出廠仍救得回來
+  //  · 附件（base64）沿用 cloudStripHeavy 排除，避免超過 Firestore 單筆 1MB 上限
+  // ==========================================================================
+  async function cloudDailySnapshot() {
+    if (!(fbDb && cloudCanUse() && cloudResetChecked)) return;
+    const today = computeTodayISO();
+    try {
+      const col = fbDb.collection('firmBackups');
+      const existing = await col.doc(today).get();
+      // 今天已經有人存過了就不重複存（同日只寫一次）
+      if (existing && existing.exists) { lastBackupInfo = { date: today, existed: true }; try { renderBackupStatus(); } catch (e) { /* ignore */ } return; }
+      const data = cloudGatherData();
+      const json = JSON.stringify(data);
+      if (json.length > 900000) { lastBackupInfo = { date: today, error: '資料量過大，快照未建立' }; return; }
+      await col.doc(today).set({
+        data, backupDate: today, createdByEmail: googleAuthedEmail || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      lastBackupInfo = { date: today, created: true };
+      try { logAudit('每日自動快照', '', `已建立 ${today} 快照`); persistAll(); } catch (e) { /* ignore */ }
+      // 清掉超過保留天數的舊快照
+      const cutoff = new Date(today + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - BACKUP_KEEP_DAYS);
+      const cutoffISO = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+      const old = await col.where('backupDate', '<', cutoffISO).limit(20).get();
+      old.forEach((docSnap) => { try { docSnap.ref.delete(); } catch (e) { /* ignore */ } });
+    } catch (e) { lastBackupInfo = { date: today, error: '快照建立失敗（不影響日常使用）' }; }
+    try { renderBackupStatus(); } catch (e) { /* ignore */ }
+  }
+  function renderBackupStatus() {
+    const el = document.getElementById('dash-backup-status'); if (!el) return;
+    if (!lastBackupInfo) { el.textContent = '自動快照狀態：尚未檢查（登入後會自動建立當日快照）'; return; }
+    if (lastBackupInfo.error) { el.innerHTML = `自動快照狀態：<span class="text-amber-600">⚠ ${esc(lastBackupInfo.error)}</span>`; return; }
+    el.innerHTML = `自動快照狀態：<span class="text-emerald-600">✓ 今日（${esc(lastBackupInfo.date)}）快照已${lastBackupInfo.created ? '建立' : '存在'}</span>，保留最近 ${BACKUP_KEEP_DAYS} 天`;
   }
   function cloudStartLiveSync() {
     // 2026-07-22 修正：只要已登入就自動即時同步（不再需要手動開「即時同步」）。
@@ -2272,7 +2302,10 @@
   }
 
   function renderDashboard() {
-    { const rb = document.getElementById('dash-reset-box'); const u = currentUser(); if (rb) rb.classList.toggle('hidden', !(u && u.roleGroup === 'boss')); }
+    // 2026-08-20：「回復出廠」入口先收起（FACTORY_RESET_ENABLED 改成 true 即可重新顯示給主持律師）
+    { const rb = document.getElementById('dash-reset-box'); const u = currentUser(); if (rb) rb.classList.toggle('hidden', !(FACTORY_RESET_ENABLED && u && u.roleGroup === 'boss')); }
+    // 資料保全區塊：主持律師與財務可見（他們負責保管備份）
+    { const bb = document.getElementById('dash-backup-box'); const u2 = currentUser(); if (bb) { bb.classList.toggle('hidden', !(u2 && u2.canSeeFinance)); if (u2 && u2.canSeeFinance) renderBackupStatus(); } }
     document.getElementById('dash-today').textContent = `${TODAY}（週${['日', '一', '二', '三', '四', '五', '六'][new Date(TODAY + 'T00:00:00').getDay()]}）`;
     renderScopeToggle();
     const scopeAttorney = scopeAttorneyFilter();
@@ -2287,7 +2320,6 @@
 
     const upcomingDeadlines = scopedDeadlines.filter((d) => d.computedDeadline && withinDays(d.computedDeadline, TODAY, 30));
     const upcomingHearings = scopedHearings.filter((h) => withinDays(h.date, TODAY, 30));
-    const filesUnnamed = filesList.filter((f) => !f.suggestedFileName).length;
     const upcomingRetainers = retainerContracts.filter((r) => r.endDate && withinDays(r.endDate, TODAY, 30) && daysUntil(r.endDate) >= 0);
 
     // 2026-07-14 會議新增：裁判費補繳期限提醒（拉到最上方醒目處，事由含「裁判費」的末日/提醒項目，含已逾期）
@@ -3438,109 +3470,7 @@
   // page-cases 頁最上方的「開案一站式表單」），作為全所統一的開案入口——與上面被移除的舊 #form-new-intake 是兩回事，
   // 不要混淆：#form-case 才是唯一現行的開案表單。
 
-  // ==========================================================================
-  // 線上卷宗 — 檔名產生器
-  // ==========================================================================
-  function renderFileNamingForm() {
-    document.getElementById('form-filenaming-wrap').innerHTML = `
-      <div class="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
-        <h3 class="font-semibold text-slate-800">產生檔名</h3>
-        <p class="text-xs text-slate-400">照事務所檔名規則組成字串，不會讀取 PDF 內容、也不會自動改檔案名稱 —— 判讀完成後請自行在電腦上手動重新命名檔案。</p>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="text-xs text-slate-500 space-y-1"><span>日期（民國年 YYY.MM.DD）</span><input id="fn-rocDate" placeholder="115.04.30" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>出狀 / 收文</span><select id="fn-direction" class="w-full text-sm border rounded px-2 py-1.5"><option value="出狀">出狀</option><option value="收文">收文</option></select></label>
-          <label id="fn-personalDelivery-wrap" class="text-xs text-slate-500 flex items-center gap-2 col-span-2"><input type="checkbox" id="fn-personalDelivery" /><span>首頁蓋有收文章（親自遞送，加註「(親遞)」）</span></label>
-          <label id="fn-transcript-wrap" class="text-xs text-slate-500 flex items-center gap-2 col-span-2 hidden"><input type="checkbox" id="fn-transcriptCopy" /><span>書狀首頁有「繕本」字樣（狀別後加註「繕本」）</span></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>當事人姓名</span><input id="fn-person" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 flex items-end gap-2 pb-1.5"><input type="checkbox" id="fn-personUnknown" /><span>無法判斷當事人</span></label>
-          <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>案由（照書狀內文完整記載）</span><input id="fn-cause" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 flex items-center gap-2 col-span-2"><input type="checkbox" id="fn-isHearingNotice" /><span>此文件為開庭通知</span></label>
-          <label class="text-xs text-slate-500 space-y-1 col-span-2"><span>文件分類</span><select id="fn-category" class="w-full text-sm border rounded px-2 py-1.5"><option value="">請選擇分類…</option>${DOC_CATEGORIES.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select></label>
-          <div id="fn-hearing-fields" class="col-span-2 grid grid-cols-2 gap-3 hidden">
-            <label class="text-xs text-slate-500 space-y-1"><span>法院/機關全名</span><input id="fn-courtNameRaw" placeholder="臺灣臺北地方法院民事庭" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-            <label class="text-xs text-slate-500 space-y-1"><span>機關簡稱（可覆寫）</span><input id="fn-courtAbbrevOverride" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-            <label class="text-xs text-slate-500 space-y-1"><span>開庭日期</span><input type="date" id="fn-hearingDate" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-            <label class="text-xs text-slate-500 space-y-1"><span>開庭時間</span><input type="time" id="fn-hearingTime" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          </div>
-          <label id="fn-docType-wrap" class="text-xs text-slate-500 space-y-1 col-span-2"><span>狀別或公文名稱（文件標題）</span><input id="fn-docType" placeholder="民事答辯二狀 / 臺灣臺北地方法院刑事庭函" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>案號（選填）</span><input id="fn-caseNumberRaw" placeholder="114年度訴字第1號" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-          <label class="text-xs text-slate-500 space-y-1"><span>股別（選填）</span><input id="fn-divisionRaw" placeholder="玄股" class="w-full text-sm border rounded px-2 py-1.5" /></label>
-        </div>
-        <div class="flex items-center gap-2">
-          <button type="button" disabled title="尚未啟用：需事務所先確認 Anthropic API 預算並將 Firebase 升級至 Blaze 方案，才會實際呼叫 AI 讀取掃描檔內容" class="text-xs px-3 py-1.5 rounded border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed">AI 建議（尚未啟用）</button>
-          <span class="text-[11px] text-slate-400">上方欄位仍需人工判讀掃描檔後手動填入</span>
-        </div>
-        <div class="text-sm bg-slate-50 border border-slate-200 rounded p-3 break-all">建議檔名：<span id="fn-output" class="font-medium text-slate-800">（請填寫欄位）</span></div>
-        <div class="flex gap-2">
-          <button type="button" id="fn-copy" class="text-sm px-4 py-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50">複製檔名</button>
-          <button type="button" id="fn-add" class="text-sm px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">加入卷宗清單</button>
-        </div>
-      </div>`;
-
-    function computeFN() {
-      const direction = document.getElementById('fn-direction').value;
-      const isHearingNotice = document.getElementById('fn-isHearingNotice').checked;
-      document.getElementById('fn-personalDelivery-wrap').classList.toggle('hidden', direction !== '出狀');
-      document.getElementById('fn-transcript-wrap').classList.toggle('hidden', direction !== '收文');
-      document.getElementById('fn-hearing-fields').classList.toggle('hidden', !isHearingNotice);
-      document.getElementById('fn-docType-wrap').classList.toggle('hidden', isHearingNotice);
-      const categorySel = document.getElementById('fn-category');
-      if (isHearingNotice && !categorySel.value) categorySel.value = '開庭';
-
-      const courtNameRaw = document.getElementById('fn-courtNameRaw').value;
-      const courtAbbrevOverride = document.getElementById('fn-courtAbbrevOverride').value;
-      const courtAbbrev = courtAbbrevOverride || abbreviateCourtName(courtNameRaw);
-      const caseNumberDisplay = combineCaseNumberDivision(document.getElementById('fn-caseNumberRaw').value, document.getElementById('fn-divisionRaw').value);
-      const effectiveDocType = isHearingNotice
-        ? buildHearingNoticeDocType(courtAbbrev, document.getElementById('fn-hearingDate').value, document.getElementById('fn-hearingTime').value)
-        : document.getElementById('fn-docType').value;
-      const personUnknown = document.getElementById('fn-personUnknown').checked;
-      document.getElementById('fn-person').disabled = personUnknown;
-      const name = buildFileName({
-        rocDate: document.getElementById('fn-rocDate').value, direction,
-        serviceNote: direction === '出狀' && document.getElementById('fn-personalDelivery').checked ? '(親遞)' : '',
-        person: personUnknown ? '(無法判斷)' : document.getElementById('fn-person').value,
-        cause: document.getElementById('fn-cause').value, docType: effectiveDocType,
-        isTranscriptCopy: direction === '收文' && document.getElementById('fn-transcriptCopy').checked,
-        caseNumberDisplay,
-      });
-      document.getElementById('fn-output').textContent = name || '（請填寫欄位）';
-      return name;
-    }
-    document.getElementById('form-filenaming-wrap').addEventListener('input', computeFN);
-    document.getElementById('form-filenaming-wrap').addEventListener('change', computeFN);
-    document.getElementById('fn-copy').addEventListener('click', async () => {
-      const name = computeFN(); if (!name) return;
-      try { await navigator.clipboard.writeText(name); const btn = document.getElementById('fn-copy'); const old = btn.textContent; btn.textContent = '已複製'; setTimeout(() => (btn.textContent = old), 1200); } catch (err) { /* clipboard 可能被瀏覽器擋下，安靜失敗，畫面上仍可手動複製 */ }
-    });
-    document.getElementById('fn-add').addEventListener('click', () => {
-      const name = computeFN(); if (!name) return;
-      const category = document.getElementById('fn-category').value || null;
-      filesList.push({ id: 'f' + Date.now(), fileName: '（新掃描檔）', suggestedFileName: name, category });
-      persistAll(); renderFilesTable();
-    });
-    computeFN();
-  }
-
-  let filesCategoryFilter = '全部';
-  function renderFilesCategoryTabs() {
-    const tabs = ['全部', ...DOC_CATEGORIES];
-    document.getElementById('files-category-tabs').innerHTML = tabs.map((c) => `
-      <button data-cat="${esc(c)}" class="files-cat-btn text-xs px-2.5 py-1 rounded-full border ${filesCategoryFilter === c ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}">${esc(c)}</button>`).join('');
-    document.querySelectorAll('.files-cat-btn').forEach((b) => b.addEventListener('click', () => { filesCategoryFilter = b.dataset.cat; renderFilesTable(); }));
-  }
-
-  function renderFilesTable() {
-    renderFilesCategoryTabs();
-    const rows = filesCategoryFilter === '全部' ? filesList : filesList.filter((f) => f.category === filesCategoryFilter);
-    document.getElementById('files-table-body').innerHTML = rows.map((f) => `
-      <tr class="hover:bg-slate-50">
-        <td class="px-5 py-3">${esc(f.fileName)}</td>
-        <td class="px-5 py-3 font-mono text-xs">${f.suggestedFileName ? esc(f.suggestedFileName) : '<span class="text-slate-400">尚未產生</span>'}</td>
-        <td class="px-5 py-3">${f.category ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full ${CATEGORY_BADGE[f.category] || 'bg-slate-100 text-slate-500'}">${esc(f.category)}</span>` : '<span class="text-slate-300 text-xs">—</span>'}</td>
-      </tr>
-    `).join('') || `<tr><td class="px-5 py-6 text-center text-slate-400" colspan="3">${filesCategoryFilter === '全部' ? '尚無卷宗檔案' : `尚無「${esc(filesCategoryFilter)}」分類的檔案`}</td></tr>`;
-  }
+  // 2026-08-20：「線上卷宗 — 檔名產生器」相關程式已隨該頁面一併移除
 
   // ==========================================================================
   // 財務
@@ -4110,25 +4040,7 @@
     });
   }
   // 2026-07-14 二次會議新增：「案件與時效管理」頁的法顧契約到期清單面板（唯讀摘要，資料源同 retainerContracts，自動過濾未續簽且已過期的舊資料）
-  function renderRetainerSummaryPanel() {
-    const body = document.getElementById('retainer-summary-table-body');
-    if (!body) return;
-    const rows = retainerContracts
-      .filter((r) => daysUntil(r.endDate) === null || daysUntil(r.endDate) >= 0)
-      .sort((a, b) => (a.endDate || '').localeCompare(b.endDate || ''));
-    body.innerHTML = rows.map((r) => {
-      const status = retainerContractStatus(r.endDate);
-      const remain = daysUntil(r.endDate);
-      return `
-      <tr class="hover:bg-slate-50">
-        <td class="px-5 py-2.5">${esc(r.clientName)}</td>
-        <td class="px-5 py-2.5 font-mono text-xs">${esc(r.startDate) || '—'} ～ ${esc(r.endDate) || '—'}</td>
-        <td class="px-5 py-2.5">${r.amount ? 'NT$ ' + Number(r.amount).toLocaleString() : '—'}</td>
-        <td class="px-5 py-2.5 font-medium ${remain !== null && remain <= 15 ? 'text-red-600' : remain !== null && remain <= 30 ? 'text-amber-600' : 'text-slate-600'}">${remain === null ? '—' : remain + ' 天'}</td>
-        <td class="px-5 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full ${status.cls}">${esc(status.label)}</span></td>
-      </tr>`;
-    }).join('') || '<tr><td class="px-5 py-4 text-slate-400" colspan="5">目前沒有進行中或即將到期的法顧契約</td></tr>';
-  }
+  // 2026-08-20 交接前清理：renderRetainerSummaryPanel 已移除（其面板早於 2026-07-22 併入「法顧契約管理」頁）
   // 2026-07-22 會議：載入既有契約至上方表單進行編輯
   function startEditRetainer(id) {
     const r = retainerContracts.find((x) => x.id === id);
@@ -4246,15 +4158,8 @@
   document.getElementById('ai-consent-note').classList.toggle('hidden', !aiConsentBox.checked);
   aiConsentBox.addEventListener('change', () => { saveState('lf_aiConsent', aiConsentBox.checked); document.getElementById('ai-consent-note').classList.toggle('hidden', !aiConsentBox.checked); });
 
-  // ==========================================================================
-  // 重設
-  // ==========================================================================
-  { const _btnReset = document.getElementById('btn-reset-all'); if (_btnReset) _btnReset.addEventListener('click', async () => {
-    if (!confirm('確定要清除本機示範資料，恢復成初始範例嗎？')) return;
-    PERSIST_KEYS.forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
-    await idbClearAll(); // 2026-07-16 架構升級：重設需同時清空 IndexedDB 主持久層
-    location.reload();
-  }); }
+  // 2026-08-20 交接前清理：舊的「重設本機示範資料」按鈕早已移除，其處理程式一併刪除。
+  // 要清空資料請用首頁的「回復出廠」（僅主持律師可見，會連雲端一起歸零）。
 
 
   // ==========================================================================
@@ -4990,13 +4895,10 @@
   (function setupFirebaseLoginUI() {
     if (!fbAuth) return;
     const gBlock = document.getElementById('google-login-block');
-    const pwField = document.getElementById('login-password-field');
-    const demoHint = document.getElementById('login-demo-hint');
     const statusEl = document.getElementById('google-login-status');
     const gBtn = document.getElementById('btn-google-login');
     if (gBlock) gBlock.classList.remove('hidden');
-    if (pwField) pwField.classList.add('hidden');       // Google 已驗證事務所身分，不需再輸密碼
-    // demo-hint 現為 Google 登入指示，保持顯示
+    // 2026-08-20：Google 登入驗證「是不是事務所的人」，個人密碼再驗證「是哪一位同事」，兩段都要，故密碼欄一律顯示
     gBtn.addEventListener('click', async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ hd: FB_ALLOWED_DOMAIN });
@@ -5769,7 +5671,6 @@
     renderTodoBoard();
     renderClosedCasesPage();
     renderClients();
-    renderFilesTable();
     renderBilling();
     renderRetainerContracts();
     renderPettyCash();
@@ -5815,7 +5716,6 @@
   renderCourtsDatalist();
   renderHearingForm();
   renderDeadlineForm();
-  renderFileNamingForm();
   renderTaxCaseForm();
   renderAll();
 
