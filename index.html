@@ -236,7 +236,13 @@
               class="text-sm px-4 py-2 rounded-md bg-navy-900 text-white hover:bg-navy-800 whitespace-nowrap"
             >📡 聯網開啟大恆全所聯合利益衝突管制表 (Excel) →</a>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1.5">連結為全所線上管制表（需具存取權限的 Google 帳號才能開啟）；本站內建的 8,236 筆為 2026-07 匯入快照，之後的新增異動請以線上版為準</p>
+          <p class="text-[11px] text-slate-400 mt-1.5">連結為全所線上管制表（需具存取權限的 Google 帳號才能開啟）。本站內建的是匯入快照，可用下方按鈕從線上版重新同步。</p>
+          <!-- 2026-08-20：從線上 Google 試算表同步管制表（限主持律師／財務；需本人有該表存取權） -->
+          <div id="conflict-sync-box" class="hidden mt-2 pt-2 border-t border-slate-100">
+            <button type="button" id="btn-conflict-sync" class="text-xs px-3 py-1.5 rounded border border-navy-300 text-navy-900 bg-slate-50 hover:bg-slate-100">🔄 從線上管制表同步最新資料</button>
+            <span class="text-[11px] text-slate-400 ml-2">目前 <span id="conflict-registry-count">—</span> 筆</span>
+            <div id="conflict-sync-status" class="text-[11px] mt-1.5 text-slate-500"></div>
+          </div>
           <div id="conflict-check-results" class="hidden mt-3 text-sm space-y-2"></div>
         </div>
 
@@ -1473,6 +1479,122 @@
     } catch (e) { /* 未登入/離線讀取失敗時沿用本機快取 */ }
   }
 
+  // ==========================================================================
+  // 2026-08-20：從線上 Google 試算表同步利益衝突管制表
+  //  · 用登入者自己的 Google 帳號授權讀取（限有該表存取權的人才讀得到，資料不會外流）
+  //  · 讀到之後先「預覽確認」才寫入雲端，避免欄位對錯把全所管制表洗掉
+  //  · 寫入 conflictRegistry/main 後，其他同仁下次登入就會自動拿到新版
+  //  · 前置作業：Google Cloud Console 需啟用 Google Sheets API
+  // ==========================================================================
+  const CONFLICT_SHEET_ID = '13F6SOZsMQWK3_As6B_K0ZPGGjs7Dtl6pIwBK-EHcnYY';
+  const CONFLICT_SHEET_GID = 781525015;
+  const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+  // 表頭關鍵字 → 目標欄位（順序＝[當事人, 相對人, 案由, 案號, 股別, 代號]）
+  const CONFLICT_COL_HINTS = [
+    ['當事人', '委任人', '本所當事人'],
+    ['相對人', '對造', '對方'],
+    ['案由', '事由'],
+    ['案號', '字號'],
+    ['股別', '股'],
+    ['代號', '編號', '律師代號'],
+  ];
+  function conflictDetectColumns(headerRow) {
+    const idx = CONFLICT_COL_HINTS.map((hints) => {
+      for (let c = 0; c < headerRow.length; c++) {
+        const h = String(headerRow[c] || '').replace(/\s/g, '');
+        if (h && hints.some((k) => h.includes(k))) return c;
+      }
+      return -1;
+    });
+    return idx;
+  }
+  function conflictRowsToRecords(rows) {
+    if (!Array.isArray(rows) || !rows.length) return { records: [], mappedBy: 'none' };
+    // 找表頭：前 5 列中能對到最多欄位的那一列
+    let headerAt = -1, best = -1, bestIdx = null;
+    for (let r = 0; r < Math.min(5, rows.length); r++) {
+      const idx = conflictDetectColumns(rows[r] || []);
+      const hit = idx.filter((x) => x >= 0).length;
+      if (hit > best) { best = hit; headerAt = r; bestIdx = idx; }
+    }
+    const useHeader = best >= 3; // 至少對到 3 欄才信任表頭，否則退回「前 6 欄」
+    const idx = useHeader ? bestIdx.map((x, i) => (x >= 0 ? x : i)) : [0, 1, 2, 3, 4, 5];
+    const body = rows.slice(useHeader ? headerAt + 1 : 0);
+    const records = body
+      .map((row) => idx.map((c) => String((row && row[c]) || '').trim()))
+      .filter((rec) => rec[0] || rec[1]); // 當事人與相對人都空的列視為空白列，略過
+    return { records, mappedBy: useHeader ? 'header' : 'position', headerAt, idx };
+  }
+  // 取得可讀取試算表的 Google access token（會跳出授權視窗）
+  async function conflictRequestSheetsToken() {
+    if (!(window.firebase && firebase.auth)) throw new Error('登入服務未就緒');
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope(SHEETS_SCOPE);
+    provider.setCustomParameters({ hd: FB_ALLOWED_DOMAIN, prompt: 'consent' });
+    const result = await firebase.auth().signInWithPopup(provider);
+    const token = result && result.credential && result.credential.accessToken;
+    if (!token) throw new Error('未取得試算表讀取權限');
+    return token;
+  }
+  async function conflictFetchFromSheet(token) {
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}?fields=sheets(properties(sheetId,title))`;
+    const metaRes = await fetch(metaUrl, { headers: { Authorization: 'Bearer ' + token } });
+    if (!metaRes.ok) {
+      if (metaRes.status === 403) throw new Error('沒有這張試算表的存取權限，或 Google Sheets API 尚未啟用');
+      if (metaRes.status === 404) throw new Error('找不到該試算表（網址或 ID 可能已變更）');
+      throw new Error(`讀取試算表失敗（${metaRes.status}）`);
+    }
+    const meta = await metaRes.json();
+    const sheetsArr = (meta && meta.sheets) || [];
+    const target = sheetsArr.find((s) => s.properties && Number(s.properties.sheetId) === CONFLICT_SHEET_GID)
+      || sheetsArr[0];
+    if (!target) throw new Error('試算表內找不到任何工作表');
+    const title = target.properties.title;
+    const valUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}/values/${encodeURIComponent(title)}!A:Z?majorDimension=ROWS`;
+    const valRes = await fetch(valUrl, { headers: { Authorization: 'Bearer ' + token } });
+    if (!valRes.ok) throw new Error(`讀取工作表「${title}」失敗（${valRes.status}）`);
+    const val = await valRes.json();
+    return { title, rows: (val && val.values) || [] };
+  }
+  async function conflictSyncFromSheet() {
+    const setMsg = (html, cls) => { const el = document.getElementById('conflict-sync-status'); if (el) { el.className = `text-[11px] mt-1.5 ${cls || 'text-slate-500'}`; el.innerHTML = html; } };
+    try {
+      setMsg('正在要求 Google 授權…');
+      const token = await conflictRequestSheetsToken();
+      setMsg('已授權，正在讀取線上管制表…');
+      const { title, rows } = await conflictFetchFromSheet(token);
+      const { records, mappedBy } = conflictRowsToRecords(rows);
+      if (!records.length) { setMsg('⚠ 讀到工作表但沒有解析出任何資料列，請確認欄位格式', 'text-amber-600'); return; }
+      const json = JSON.stringify(records);
+      if (json.length > 900000) { setMsg(`⚠ 資料量 ${(json.length / 1024).toFixed(0)}KB 超過單筆上限，無法寫入雲端`, 'text-amber-600'); return; }
+      const sample = records.slice(0, 3).map((r) => `　${esc(r[0] || '—')}／${esc(r[1] || '—')}｜${esc(r[2] || '—')}｜${esc(r[3] || '—')}`).join('<br>');
+      setMsg(`讀到 <b>${records.length.toLocaleString()}</b> 筆（工作表「${esc(title)}」，欄位以${mappedBy === 'header' ? '表頭名稱' : '欄位順序'}對應），請確認前 3 筆是否正確：<br>${sample}`);
+      confirmModal({
+        title: '更新全所利益衝突管制表',
+        message: `即將以線上版的 ${records.length.toLocaleString()} 筆覆蓋系統目前的 ${conflictRecords.length.toLocaleString()} 筆。請先確認上方預覽的欄位順序（當事人／相對人｜案由｜案號）正確無誤。`,
+        confirmText: '確認更新', danger: false,
+      }, async () => {
+        try {
+          setMsg('正在寫入雲端…');
+          await firebase.firestore().collection('conflictRegistry').doc('main').set({
+            data: json, count: records.length, source: 'google-sheet',
+            updatedByEmail: googleAuthedEmail || '', updatedAtLocal: new Date().toISOString(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          conflictRecords = records;
+          try { localStorage.setItem('lf_conflictCache', json); } catch (e) { /* ignore */ }
+          refreshConflictCount();
+          try { logAudit('更新利益衝突管制表', '', `${records.length} 筆（來源：線上試算表）`); persistAll(); } catch (e) { /* ignore */ }
+          setMsg(`✓ 已更新為 ${records.length.toLocaleString()} 筆，其他同仁下次登入會自動取得`, 'text-emerald-600');
+        } catch (e) { setMsg(`⚠ 寫入雲端失敗：${esc(e.message || e)}`, 'text-amber-600'); }
+      });
+    } catch (e) {
+      const m = String((e && e.message) || e);
+      if (/popup|cancel/i.test(m)) { setMsg('已取消授權', 'text-slate-400'); return; }
+      setMsg(`⚠ ${esc(m)}`, 'text-amber-600');
+    }
+  }
+
   const SEED_CASES = [];
 
   const SEED_HEARINGS = [];
@@ -2306,6 +2428,8 @@
     { const rb = document.getElementById('dash-reset-box'); const u = currentUser(); if (rb) rb.classList.toggle('hidden', !(FACTORY_RESET_ENABLED && u && u.roleGroup === 'boss')); }
     // 資料保全區塊：主持律師與財務可見（他們負責保管備份）
     { const bb = document.getElementById('dash-backup-box'); const u2 = currentUser(); if (bb) { bb.classList.toggle('hidden', !(u2 && u2.canSeeFinance)); if (u2 && u2.canSeeFinance) renderBackupStatus(); } }
+    // 管制表同步鈕：主持律師與財務可見（會覆蓋全所共用的管制表，不開放給所有人）
+    { const sb = document.getElementById('conflict-sync-box'); const u3 = currentUser(); if (sb) sb.classList.toggle('hidden', !(u3 && u3.canSeeFinance)); refreshConflictCount(); }
     document.getElementById('dash-today').textContent = `${TODAY}（週${['日', '一', '二', '三', '四', '五', '六'][new Date(TODAY + 'T00:00:00').getDay()]}）`;
     renderScopeToggle();
     const scopeAttorney = scopeAttorneyFilter();
@@ -2357,6 +2481,9 @@
     renderUrgentTodo();
     renderCloudSyncPanel();
   }
+
+  // 2026-08-20：管制表線上同步按鈕
+  { const _cs = document.getElementById('btn-conflict-sync'); if (_cs) _cs.addEventListener('click', () => { conflictSyncFromSheet(); }); }
 
   // 2026-07-16 審查修正：利益衝突快速查詢原本只是一個沒有任何行為的輸入框，現在改為即時比對
   // 本機資料——客戶名單、現有案件（當事人＋對造＋對造律師）、已結案紀錄（當事人＋備註內對造）。
