@@ -1536,8 +1536,11 @@
     if (!token) throw new Error('未取得試算表讀取權限');
     return token;
   }
+  // 2026-08-20 修正：這張是「大恆全所聯合」管制表，每家事務所各有一個分頁（如 606V(惟理)）。
+  // 原本只讀單一 gid 會只拿到惟理自己的 957 筆、漏掉其他事務所的 7,000 多筆——而那才是最需要比對的部分。
+  // 改為讀取「全部分頁」再合併。
   async function conflictFetchFromSheet(token) {
-    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}?fields=sheets(properties(sheetId,title))`;
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}?fields=sheets(properties(sheetId,title,hidden))`;
     const metaRes = await fetch(metaUrl, { headers: { Authorization: 'Bearer ' + token } });
     if (!metaRes.ok) {
       if (metaRes.status === 403) throw new Error('沒有這張試算表的存取權限，或 Google Sheets API 尚未啟用');
@@ -1545,34 +1548,50 @@
       throw new Error(`讀取試算表失敗（${metaRes.status}）`);
     }
     const meta = await metaRes.json();
-    const sheetsArr = (meta && meta.sheets) || [];
-    const target = sheetsArr.find((s) => s.properties && Number(s.properties.sheetId) === CONFLICT_SHEET_GID)
-      || sheetsArr[0];
-    if (!target) throw new Error('試算表內找不到任何工作表');
-    const title = target.properties.title;
-    const valUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}/values/${encodeURIComponent(title)}!A:Z?majorDimension=ROWS`;
-    const valRes = await fetch(valUrl, { headers: { Authorization: 'Bearer ' + token } });
-    if (!valRes.ok) throw new Error(`讀取工作表「${title}」失敗（${valRes.status}）`);
-    const val = await valRes.json();
-    return { title, rows: (val && val.values) || [] };
+    const sheetsArr = ((meta && meta.sheets) || []).filter((s) => s && s.properties);
+    if (!sheetsArr.length) throw new Error('試算表內找不到任何工作表');
+    const titles = sheetsArr.map((s) => s.properties.title);
+    // 一次批次讀取所有分頁
+    const params = titles.map((t) => `ranges=${encodeURIComponent(t + '!A:Z')}`).join('&');
+    const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFLICT_SHEET_ID}/values:batchGet?${params}&majorDimension=ROWS`;
+    const batchRes = await fetch(batchUrl, { headers: { Authorization: 'Bearer ' + token } });
+    if (!batchRes.ok) throw new Error(`批次讀取工作表失敗（${batchRes.status}）`);
+    const batch = await batchRes.json();
+    const ranges = (batch && batch.valueRanges) || [];
+    const perSheet = ranges.map((r, i) => ({ title: titles[i] || (r && r.range) || `分頁${i + 1}`, rows: (r && r.values) || [] }));
+    return { perSheet, titles };
   }
   async function conflictSyncFromSheet() {
     const setMsg = (html, cls) => { const el = document.getElementById('conflict-sync-status'); if (el) { el.className = `text-[11px] mt-1.5 ${cls || 'text-slate-500'}`; el.innerHTML = html; } };
     try {
       setMsg('正在要求 Google 授權…');
       const token = await conflictRequestSheetsToken();
-      setMsg('已授權，正在讀取線上管制表…');
-      const { title, rows } = await conflictFetchFromSheet(token);
-      const { records, mappedBy } = conflictRowsToRecords(rows);
-      if (!records.length) { setMsg('⚠ 讀到工作表但沒有解析出任何資料列，請確認欄位格式', 'text-amber-600'); return; }
+      setMsg('已授權，正在讀取線上管制表的所有分頁…');
+      const { perSheet } = await conflictFetchFromSheet(token);
+      // 合併所有分頁（這是「全所聯合」管制表，每家事務所一個分頁，全部都要比對）
+      let records = [];
+      const breakdown = [];
+      let mappedBy = 'header';
+      perSheet.forEach((s) => {
+        const r = conflictRowsToRecords(s.rows);
+        if (r.mappedBy === 'position' && r.records.length) mappedBy = 'position';
+        breakdown.push({ title: s.title, n: r.records.length });
+        records = records.concat(r.records);
+      });
+      if (!records.length) { setMsg('⚠ 讀到試算表但沒有解析出任何資料列，請確認欄位格式', 'text-amber-600'); return; }
       const json = JSON.stringify(records);
-      if (json.length > 900000) { setMsg(`⚠ 資料量 ${(json.length / 1024).toFixed(0)}KB 超過單筆上限，無法寫入雲端`, 'text-amber-600'); return; }
+      if (json.length > 900000) { setMsg(`⚠ 資料量 ${(json.length / 1024).toFixed(0)}KB 超過 Firestore 單筆上限，無法寫入雲端`, 'text-amber-600'); return; }
       const sample = records.slice(0, 3).map((r) => `　${esc(r[0] || '—')}／${esc(r[1] || '—')}｜${esc(r[2] || '—')}｜${esc(r[3] || '—')}`).join('<br>');
-      setMsg(`讀到 <b>${records.length.toLocaleString()}</b> 筆（工作表「${esc(title)}」，欄位以${mappedBy === 'header' ? '表頭名稱' : '欄位順序'}對應），請確認前 3 筆是否正確：<br>${sample}`);
+      const perSheetHtml = breakdown.map((b) => `${esc(b.title)} ${b.n.toLocaleString()}`).join('、');
+      // 安全檢查：新資料比現有少三成以上時特別警示（可能又只讀到部分分頁）
+      const shrink = conflictRecords.length > 0 && records.length < conflictRecords.length * 0.7;
+      const shrinkWarn = shrink
+        ? `<div class="text-red-600 font-bold mt-1">⚠ 注意：新資料（${records.length.toLocaleString()} 筆）比目前（${conflictRecords.length.toLocaleString()} 筆）少很多，請確認是否漏讀分頁，不確定就先取消。</div>` : '';
+      setMsg(`讀到 <b>${records.length.toLocaleString()}</b> 筆，共 ${breakdown.length} 個分頁（${esc(perSheetHtml)}）；欄位以${mappedBy === 'header' ? '表頭名稱' : '欄位順序'}對應。請確認前 3 筆是否正確：<br>${sample}${shrinkWarn}`);
       confirmModal({
         title: '更新全所利益衝突管制表',
-        message: `即將以線上版的 ${records.length.toLocaleString()} 筆覆蓋系統目前的 ${conflictRecords.length.toLocaleString()} 筆。請先確認上方預覽的欄位順序（當事人／相對人｜案由｜案號）正確無誤。`,
-        confirmText: '確認更新', danger: false,
+        message: `即將以線上版的 ${records.length.toLocaleString()} 筆（合併 ${breakdown.length} 個分頁）覆蓋系統目前的 ${conflictRecords.length.toLocaleString()} 筆。請先確認上方預覽的欄位順序（當事人／相對人｜案由｜案號）與各分頁筆數正確無誤。`,
+        confirmText: '確認更新', danger: !!shrink,
       }, async () => {
         try {
           setMsg('正在寫入雲端…');
