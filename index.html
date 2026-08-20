@@ -76,9 +76,14 @@
             <span>身分角色</span>
             <select id="login-role-select" name="userId" class="w-full text-sm border rounded px-3 py-2"></select>
           </label>
+          <!-- 2026-08-20：每人各自的登入密碼（選身分後輸入本人密碼） -->
+          <label class="text-xs text-slate-500 space-y-1 block">
+            <span>個人密碼</span>
+            <input id="login-password" name="password" type="password" inputmode="numeric" autocomplete="off" placeholder="請輸入您的個人密碼" class="w-full text-sm border rounded px-3 py-2" />
+          </label>
           <div id="login-error" class="hidden text-xs text-red-600"></div>
           <button class="w-full text-sm px-4 py-2.5 rounded bg-navy-900 text-white hover:bg-navy-800 font-medium">進入系統</button>
-          <p id="login-demo-hint" class="text-[11px] text-slate-400 pt-1">請先用上方「使用 Google 帳號登入」（限 @ialaw.tw），再選身分進入。</p>
+          <p id="login-demo-hint" class="text-[11px] text-slate-400 pt-1">請先用上方「使用 Google 帳號登入」（限 @ialaw.tw），再選身分並輸入個人密碼進入。密碼請洽主持律師。</p>
         </form>
         <div id="signup-panel" class="hidden text-sm text-slate-600 space-y-3">
           <p>新帳號請洽主持律師或系統管理者於程式碼 <span class="font-mono text-xs bg-slate-100 px-1 py-0.5 rounded">USERS</span> 清單中新增，本預覽尚未開放線上自助註冊。</p>
@@ -1162,13 +1167,14 @@
     { fullName: '程立全律師', calendarLabel: '程立全律師' },
     { fullName: '王雅楨律師', calendarLabel: '王雅楨律師' },
     { fullName: '陳愷閎律師', calendarLabel: '陳愷閎律師' },
+    { fullName: '劉雅欣律師', calendarLabel: '劉雅欣律師' }, // 2026-08-20 新進受僱律師
   ];
   function calendarLabelFor(fullName) {
     const found = ATTORNEYS.find((a) => a.fullName === fullName);
     return found ? found.calendarLabel : (fullName || '');
   }
   // 2026-07-22：舊資料/歷史匯入的律師簡稱 → 全名對應（匯入結案簡表時把「陳律師」補成「陳愷閎律師」等，才對得上全名分頁）
-  const LEGACY_ATTORNEY_MAP = { 丁律師: '丁穩勝律師', 程律師: '程立全律師', 王律師: '王雅楨律師', 林紫彤: '林紫彤律師', 林律師: '林紫彤律師', 陳律師: '陳愷閎律師' };
+  const LEGACY_ATTORNEY_MAP = { 丁律師: '丁穩勝律師', 程律師: '程立全律師', 王律師: '王雅楨律師', 林紫彤: '林紫彤律師', 林律師: '林紫彤律師', 陳律師: '陳愷閎律師', 劉律師: '劉雅欣律師', 劉雅欣: '劉雅欣律師' };
   function normalizeAttorneyName(x) {
     if (!x) return x;
     const s = String(x).trim();
@@ -1180,13 +1186,17 @@
   // ---- 2026-07-14 會議新增：角色權限系統 (RBAC) ----
   // 純前端 localStorage 區隔顯示用，非正式資安等級；正式使用前請至此處更改密碼或串接真實驗證系統
   // 2026-07-22 更新：實際 6 位使用者（2 主持律師 + 2 律師 + 1 財務 + 1 行政）
+  // 2026-08-20：每人各自的登入密碼（選身分後需輸入本人密碼才能進入，避免同事之間互相誤用身分）。
+  // 注意：真正擋住外人的是 @ialaw.tw Google 登入；此密碼寫在前端原始碼中，僅用於「所內同事之間互相區分」，
+  // 對已能開啟本站的人不具保密效果。要改密碼直接改這裡的 password 欄位。password 為空＝尚未設定，可直接進入。
   const USERS = [
-    { id: 'ding', name: '丁穩勝', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '丁穩勝律師', canSeeFinance: true },
-    { id: 'cheng', name: '程立全', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '程立全律師', canSeeFinance: true },
-    { id: 'wang', name: '王雅楨', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '王雅楨律師', canSeeFinance: false },
-    { id: 'chen', name: '陳愷閎', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '陳愷閎律師', canSeeFinance: false },
-    { id: 'finance', name: '李筱萱', roleLabel: '財務', roleGroup: 'finance', attorneyFullName: null, canSeeFinance: true },
-    { id: 'assistant', name: '趙宥維', roleLabel: '行政', roleGroup: 'assistant', attorneyFullName: null, canSeeFinance: false },
+    { id: 'ding', name: '丁穩勝', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '丁穩勝律師', canSeeFinance: true, password: '5858' },
+    { id: 'cheng', name: '程立全', roleLabel: '主持律師', roleGroup: 'boss', attorneyFullName: '程立全律師', canSeeFinance: true, password: '4377' },
+    { id: 'wang', name: '王雅楨', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '王雅楨律師', canSeeFinance: false, password: '0424' },
+    { id: 'chen', name: '陳愷閎', roleLabel: '律師', roleGroup: 'lawyer', attorneyFullName: '陳愷閎律師', canSeeFinance: false, password: '' },
+    { id: 'liu', name: '劉雅欣', roleLabel: '受僱律師', roleGroup: 'lawyer', attorneyFullName: '劉雅欣律師', canSeeFinance: false, password: '8976' },
+    { id: 'finance', name: '李筱萱', roleLabel: '財務', roleGroup: 'finance', attorneyFullName: null, canSeeFinance: true, password: '6956' },
+    { id: 'assistant', name: '趙宥維', roleLabel: '行政', roleGroup: 'assistant', attorneyFullName: null, canSeeFinance: false, password: '8767' },
   ];
   function findUser(id) { return USERS.find((u) => u.id === id) || null; }
 
@@ -1497,7 +1507,7 @@
   const SEED_RETAINER_CONTRACTS = [];
 
   // 2026-07-09 會議新增：稅務歸屬總表（企業客戶現金制 vs 律師掛名個案結案制）
-  const TAX_OWNER_OPTIONS = ['歸屬丁穩勝律師', '歸屬程立全律師', '歸屬王雅楨律師', '歸屬陳愷閎律師', '平行單位合辦（各半）', '義務案件（免稅）'];
+  const TAX_OWNER_OPTIONS = ['歸屬丁穩勝律師', '歸屬程立全律師', '歸屬王雅楨律師', '歸屬陳愷閎律師', '歸屬劉雅欣律師', '平行單位合辦（各半）', '義務案件（免稅）'];
   // 2026-07-13 新增：參考「113結案表(報稅)例稿」補上的欄位
   const CLIENT_TYPES = ['企業客戶', '個人客戶'];
   const WITHHOLDING_TAX_RATE = 0.1; // 發票金額（未稅）× 10%，無免稅門檻（丁一朗確認）
@@ -1549,7 +1559,7 @@
   // 客戶請款/律師酬勞績效示範用工時記錄（對應既有 SEED_CASES 案號）
   const SEED_CASE_HOURS = [];
   // 分潤率為所內設定，非既有真實資料，預設值可自行調整（會記住於本機）
-  const DEFAULT_PROFIT_SHARE_RATES = { 丁穩勝律師: 50, 程立全律師: 50, 王雅楨律師: 40, 陳愷閎律師: 40 };
+  const DEFAULT_PROFIT_SHARE_RATES = { 丁穩勝律師: 50, 程立全律師: 50, 王雅楨律師: 40, 陳愷閎律師: 40, 劉雅欣律師: 40 };
   // 獨立待辦任務指派（不綁開庭/期限，示範資料以 TODAY='2026-07-08' 為基準）
   const SEED_TASKS = [];
 
@@ -1557,7 +1567,7 @@
   // 2026-07-14 會議新增：零用金管理獨立分頁的種子資料
   // 2026-07-14 三次會議：零用金頁改為「零用金與律師個人帳管理」，經手人欄位改為「請款人」（韋里/立權/凱虹/宥維），
   // 並新增「摘要分類」欄位（車資/餐費/代墊款/其他）
-  const PETTY_CASH_CLAIMANTS = ['丁穩勝', '程立全', '王雅楨', '陳愷閎', '李筱萱', '趙宥維'];
+  const PETTY_CASH_CLAIMANTS = ['丁穩勝', '程立全', '王雅楨', '陳愷閎', '劉雅欣', '李筱萱', '趙宥維'];
   const PETTY_CASH_CATEGORIES = ['車資', '餐費', '代墊款', '其他'];
   // 2026-07-22 三次會議：憑證類型固定四選項
   const PETTY_CASH_VOUCHER_TYPES = ['發票', '收據', '明細', '無單據'];
@@ -3168,7 +3178,7 @@
   // ==========================================================================
   function attorneyCounts() {
     const counts = { 全部: closedCases.length };
-    ['丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師'].forEach((a) => { counts[a] = closedCases.filter((c) => c.attorney === a).length; });
+    ['丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師', '劉雅欣律師'].forEach((a) => { counts[a] = closedCases.filter((c) => c.attorney === a).length; });
     return counts;
   }
 
@@ -3189,7 +3199,7 @@
 
   function renderClosedTabs() {
     const counts = attorneyCounts();
-    const tabs = ['全部', '丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師'];
+    const tabs = ['全部', '丁穩勝律師', '程立全律師', '王雅楨律師', '陳愷閎律師', '劉雅欣律師'];
     document.getElementById('closed-tabs').innerHTML = tabs.map((t) => `
       <button data-tab="${esc(t)}" class="closed-tab-btn text-sm px-3 py-1.5 rounded-full border ${closedTabFilter === t ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">${esc(t)}${t !== '全部' ? ` (${counts[t] || 0})` : ` (${counts['全部']})`}</button>`).join('');
     document.querySelectorAll('.closed-tab-btn').forEach((b) => b.addEventListener('click', () => { closedTabFilter = b.dataset.tab; renderClosedCasesPage(); }));
@@ -5039,6 +5049,12 @@
     // 2026-08-04：只用 @ialaw.tw Google 登入，已移除密碼登入。角色只是檢視切換。
     if (!fbAuth) { errBox.textContent = '登入服務未就緒，請重新整理頁面再試'; errBox.classList.remove('hidden'); return; }
     if (!googleAuthedEmail) { errBox.textContent = '請先用上方「使用 Google 帳號登入」（限 @ialaw.tw）完成身分驗證'; errBox.classList.remove('hidden'); return; }
+    // 2026-08-20：再驗證個人密碼（同事之間互相區分身分用；password 為空＝尚未設定，可直接進入）
+    if (u.password) {
+      const pw = String(fd.get('password') || '').trim();
+      if (!pw) { errBox.textContent = '請輸入您的個人密碼'; errBox.classList.remove('hidden'); return; }
+      if (pw !== u.password) { errBox.textContent = '個人密碼錯誤，請重新輸入'; errBox.classList.remove('hidden'); const pi = document.getElementById('login-password'); if (pi) { pi.value = ''; pi.focus(); } return; }
+    }
     errBox.classList.add('hidden');
     currentUserId = u.id; saveState('lf_currentUserId', currentUserId);
     e.target.reset(); populateLoginRoleSelect();
